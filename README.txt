@@ -1,7 +1,7 @@
 Description:
 
-Below are instructions on how to crate a development environment for opensips xcoder_b2b module.
-This module allow transcoding between two clients using media relay server.
+Below are instructions on how to create a development environment for opensips xcoder_b2b module.
+This module allow transcoding between two clients using a media relay server.
 
 1. Get the source for opensips 1.7 from:
  
