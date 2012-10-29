@@ -5,7 +5,7 @@ This module allow transcoding between two clients using a media relay server.
 
 1. Unzip the trunk zip file containing the source code.
  
-$ tar -czvf xcoder_b2b_modules.tar.gz
+$ unzip trunk.zip
  
 2. Enter ./trunk/src directory and compile using auto tools
  
