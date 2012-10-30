@@ -25,6 +25,6 @@ $ rm -rf b2b_logic
  
 Compile xcoder_b2b module : $ make xcoder_b2b
 Compile b2b_logic module : $ make b2b_logic
-Compile xcoder_b2b and b2b_logic module : make all
+Compile xcoder_b2b and b2b_logic module : $ make all
  
  
