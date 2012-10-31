@@ -1,0 +1,42 @@
+--- ./trunk/src/opensips_1_7/modules/b2b_logic/b2b_logic.c	2012-10-31 10:41:28.056947229 +0000
++++ ./b2b_logic/b2b_logic.c	2012-10-31 10:42:07.336947339 +0000
+@@ -50,6 +50,7 @@
+ #include "b2b_load.h"
+ #include "b2bl_db.h"
+ 
++
+ #define TABLE_VERSION 2
+ 
+ /** Functions declarations */
+@@ -83,6 +84,7 @@
+ str custom_headers_lst[HDR_LST_LEN];
+ int custom_headers_lst_len =0;
+ /* The list of the headers that are passed on the other side by default */
++/* Added new headers by Jorge*/
+ static str default_headers[HDR_DEFAULT_LEN]=
+ {
+    {"Content-Type",12},
+@@ -189,7 +191,12 @@
+ 
+ 	LM_DBG("start\n");
+ 
+-	/* load b2b_entities api */
++	/* load xcoder_b2b_entities api */ //JORGE
++        if(load_xcoder_api(&b2b_xcoder)< 0) {
++                LM_ERR("can't load b2b_xcoder functions\n");
++                return -1;
++        }
++
+ 	if(load_b2b_api(&b2b_api)< 0)
+ 	{
+ 		LM_ERR("Failed to load b2b api\n");
+@@ -1252,6 +1259,9 @@
+ 	if(tuple)
+ 		b2b_mark_todel(tuple);
+ 	lock_release(&b2bl_htable[hash_index].lock);
++
++	
++
+ 	return 0;
+ }
+ 
