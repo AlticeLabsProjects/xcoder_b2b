@@ -17,10 +17,16 @@ $ svn co https://opensips.svn.sourceforge.net/svnroot/opensips/branches/1.7 open
 
 4. Move source files into opensips modules structure
 
-$ cp -fr ../../b2b_logic opensips_1_7/modules/
 $ mv ../../xcoder_b2b opensips_1_7/modules/
 $ mv ../../Makefile ./
-$ rm -rf ../../b2b_logic
+
+5. Apply patches 
+$ cd ../../
+$ patch -p0 < logic.patch
+$ patch -p0 < b2b_logic.c.patch
+$ patch -p0 < b2b_logic.h.patch
+$ patch -p0 < b2b_load.patch
+$ cd -
 
 5. Compile using auto tools
  
