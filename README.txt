@@ -17,11 +17,12 @@ $ svn co https://opensips.svn.sourceforge.net/svnroot/opensips/branches/1.7 open
 
 4. Move source files into opensips modules structure
 
-$ mv ../../xcoder_b2b opensips_1_7/modules/
-$ mv ../../Makefile ./
+$ mv ../../1.7-lts/xcoder_b2b opensips_1_7/modules/
+$ mv ../../1.7-lts/Makefile ./
 
 5. Apply patches 
 $ cd ../../
+$ mv ./../1.7-lts/b2b_logic/* ../../
 $ patch -p0 < logic.patch
 $ patch -p0 < b2b_logic.c.patch
 $ patch -p0 < b2b_logic.h.patch
