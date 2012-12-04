@@ -111,7 +111,7 @@ load_xcoder(struct xcoder_binds *xcoder)
 int
 clean_client(client * cli)
 {
-	LM_DBG("Cleaning client.\n");
+	LM_INFO("Cleaning client. client_id=%d | client_tag=%s | client_state=%d\n",cli->id,cli->tag,cli->s);
 
 	bzero(cli->src_ip, 25);
 	bzero(cli->dst_ip, 25);
@@ -151,8 +151,9 @@ clean_client(client * cli)
 int
 clean_connection(conn * connection)
 {
-   LM_INFO("Cleaning connection. id %d | call-id %s | b2b_call-id %s\n",
+   LM_INFO("Cleaning connection. b2bcallid=%d | call_id=%s | b2b_gen_call-id %s\n",
          connection->id, connection->call_id, connection->b2b_client_callID);
+   LM_NOTICE("Terminating call. b2bcallid=%d",connection->id);
    connection->id = -1;
    connection->xcoder_id = -1;
    connection->conn_time = 0;
@@ -213,6 +214,7 @@ clean_connection_v2(struct sip_msg *msg)
    {
       if (connections[i].s != EMPTY && connections[i].s != TERMINATED && (strcmp(connections[i].call_id, callID) == 0))
       {
+    	 LM_INFO("Found connection to clean. b2bcallid=%d | call_id=%s | b2b_gen_call_id %s\n",connections[i].id,connections[i].call_id,connections[i].b2b_client_callID);
     	 send_remove_to_xcoder(&(connections[i]));
          clean_connection(&(connections[i]));
          return OK;
@@ -292,11 +294,11 @@ check_connections(void)
 int
 cancel_connection(conn * connection)
 {
-   LM_INFO("Cancelling connection : %s\n", connection->call_id);
+   LM_NOTICE("Cancelling connection. b2bcallid=%d | call_id=%s | conn_state=%d\n", connection->id,connection->call_id,connection->s);
    str key_b2b;
    if (connection == NULL)
    {
-      LM_ERR("ERROR: Connection to cancel is null. Error code=%d\n",PARSER_ERROR);
+      LM_ERR("ERROR: Connection to cancel is null. Errorcode=%d\n",PARSER_ERROR);
       return PARSER_ERROR;
    }
    key_b2b.s = connection->b2b_key;
@@ -323,12 +325,12 @@ get_client(conn * connection, client * src_cli, client ** dst_cli)
 
    int i = 0;
 //	char * dst_ip = src_cli->dst_ip;
-   LM_DBG("Source client. Conn id %d | Conn_state %d | Src_cli Id %d | Src_cli Ip %s | Src_cli dst_ip %s | Src_cli tag=%s | call-id %s\n",
+   LM_INFO("Source client. b2bcallid=%d | conn_state=%d | client_id=%d | src_ip=%s | dst_ip=%s | tag=%s | call_id=%s\n",
          connection->id, connection->s, src_cli->id, src_cli->src_ip, src_cli->dst_ip, src_cli->tag, connection->call_id);
 
    for (i = 0; i < MAX_CLIENTS; i++)
    {
-      LM_DBG("To compare. Client number %d\n",i);
+      LM_INFO("To compare. Client number %d\n",i);
 
       if (connection->s != TERMINATED && connection->s != EMPTY && connection->clients[i].is_empty != 0
             && connection->clients[i].id != src_cli->id)
@@ -337,24 +339,24 @@ get_client(conn * connection, client * src_cli, client ** dst_cli)
          break;
       }
    }
-   /*	LM_DBG("Source client. Conn id %d | Conn_state %d | Id %d | Ip %s | dst_ip %s | tag=%s | call-id %s\n",
+   /*	LM_INFO("Source client. Conn id %d | Conn_state %d | Id %d | Ip %s | dst_ip %s | tag=%s | call-id %s\n",
     connection->id,connection->s,src_cli->id,src_cli->src_ip,src_cli->dst_ip,src_cli->tag,connection->call_id);
     for(i=0;i<MAX_CLIENTS;i++)
     {
-    LM_DBG("To compare. Id %d | IP %s | Dst_Ip %s | tag=%s | conn ip %s | b2b_tag=%s | dst_audio %s\n",
+    LM_INFO("To compare. Id %d | IP %s | Dst_Ip %s | tag=%s | conn ip %s | b2b_tag=%s | dst_audio %s\n",
     connection->clients[i].id,connection->clients[i].src_ip,connection->clients[i].dst_ip,connection->clients[i].tag,
     connection->clients[i].conn_ip,connection->clients[i].b2b_tag,connection->clients[i].dst_audio);
 
     if(connection->s!=TERMINATED && connection->s!=EMPTY && ( strcmp(connection->clients[i].src_ip,dst_ip)==0 ) && (strcmp(connection->clients[i].tag,src_cli->tag)!=0))
     {
-    LM_INFO("Encountered destination client. Id = %d\n",connection->clients[i].id);
+    LM_NOTICE("Encountered destination client. Id = %d\n",connection->clients[i].id);
     *dst_cli=&(connection->clients[i]);
     break;
     }
     }*/
    if (i == MAX_CLIENTS)
    {
-      LM_ERR("ERROR: No client encountered.Conn id %d | Conn callId %s | conn_state=%d | Src client_id=%d | Src client state=%d |Error code=%d\n",
+      LM_ERR("ERROR: No client encountered.b2bcallid=%d | all_id=%s | conn_state=%d | client_id=%d | client_state=%d | Errorcode=%d\n",
     		  connection->id,connection->call_id,connection->s,src_cli->id,src_cli->s,GENERAL_ERROR);
       return GENERAL_ERROR;
    }
@@ -383,7 +385,7 @@ get_active_payload(client * cli, char * chosen)
          return OK;
       }
    }
-   LM_ERR("No payload found. client_id=%d | client state=%d | src_ip=%s | Error code=%d\n",
+   LM_ERR("No payload found. client_id=%d | client state=%d | src_ip=%s | Errorcode=%d\n",
 		   cli->id,cli->s,cli->src_ip,UNSUPPORTED_MEDIA_TYPE);
    return UNSUPPORTED_MEDIA_TYPE;
 }
@@ -464,7 +466,7 @@ read_until_char(char * sdp, int * i, const char pattern, char * to_fill)
 
    if (pos == *i)
    {
-      LM_ERR("ERROR: no character readed. Error code=%d\n",GENERAL_ERROR);
+      LM_ERR("ERROR: no character readed. Errorcode=%d\n",GENERAL_ERROR);
       return GENERAL_ERROR;
    }
 
@@ -499,7 +501,7 @@ move_to_end(char * sdp, int * i)
 
    if (*i == pos)
    {
-      LM_DBG("WARNING: Pointer returned is the same as received.\n");
+      LM_INFO("WARNING: Pointer returned is the same as received.\n");
       return GENERAL_ERROR;
    }
    *i = pos;
@@ -526,7 +528,7 @@ get_word(char * sdp, int * i, char * word)
 
    if (word == NULL)
    {
-      LM_ERR("ERROR: Failed to retrive word. Str position %d | Error code=%d\n",(*i),GENERAL_ERROR);
+      LM_ERR("ERROR: Failed to retrieve word. Str position %d | Errorcode=%d\n",(*i),GENERAL_ERROR);
       return GENERAL_ERROR;
    }
 
@@ -590,7 +592,7 @@ int get_value_from_str(char * var_name, char * buffer, char * value)
 
 	if(value[0]=='\0')
 	{
-		LM_INFO("No value retrieved\n");
+		LM_NOTICE("No value retrieved\n");
 		return PARSER_ERROR;
 	}
 
@@ -614,7 +616,7 @@ insert_payloads(conn * connection, client * cli, char * payload_str)
    char tmp_payload[32];
    bzero(tmp_payload, 32);
 
-   LM_DBG("Connection state : %d\n", connection->s);
+   LM_INFO("Insert playloads. b2bcallid=%d | conn_state=%d\n", connection->id,connection->s);
    sprintf(cli->payload_str, payload_str);
 
    while (payload_str[pos] != '\0' && payload_str[pos] != '\n' && payload_str[pos] != '\r')
@@ -647,13 +649,13 @@ insert_payloads(conn * connection, client * cli, char * payload_str)
 int
 str_toUpper(char * str)
 {
-   LM_DBG("String to put in uppercase is %s\n", str);
+   LM_INFO("String to put in uppercase is %s\n", str);
    int i = 0;
    for (i = 0; str[i]; i++)
    {
       str[i] = toupper(str[i]);
    }
-   LM_DBG("Upper string : %s\n", str);
+   LM_INFO("Upper string : %s\n", str);
    return OK;
 }
 
@@ -686,16 +688,17 @@ int remove_newline_str(char * str)
  * DESCRIPTION: This function match the codecs that a client supports with codecs that a media relay support.
  *		Match the codecs and if successful returns the payload of chosen codec.
  *
- *              cli :            client to match codecs
+ *		connection :	 connection strucure
+ *      cli :            client to match codecs
  *		chosen_payload : matched codec payload
  *****************************************************************************/
 
 int
-match_payload(client * cli, char * chosen_payload)
+match_payload(conn * connection, client * cli, char * chosen_payload)
 {
 
    int j = 0;
-   LM_DBG("Client payload struct\n");
+   LM_INFO("Client payload struct\n");
    for (j = 0; j < MAX_PAYLOADS; j++)
    {
       if (cli->payloads[j].is_empty == 1)
@@ -703,7 +706,7 @@ match_payload(client * cli, char * chosen_payload)
          //If codec name is not present in attribute line, use default name from media relay supported codecs
          if ((strlen(cli->payloads[j].codec) < 1))
          {
-            LM_INFO("Codec name not present for payload %s. Assigning a default name.\n", cli->payloads[j].payload);
+            LM_INFO("Codec name not present for payload [%s]. Assigning a default name.\n", cli->payloads[j].payload);
 
             int m = 0;
             for (m = 0; m < MAX_PAYLOADS; m++)
@@ -715,23 +718,23 @@ match_payload(client * cli, char * chosen_payload)
                if ((strcmp(cli->payloads[j].payload, payload) == 0)) //Match payload
                {
                   sprintf(cli->payloads[j].codec, "%s", codecs[m].sdpname);
-                  LM_INFO("Assigned codec name %s for payload %s\n", cli->payloads[j].codec, cli->payloads[j].payload);
+                  LM_INFO("Assigned codec name [%s] for payload [%s]\n", cli->payloads[j].codec, cli->payloads[j].payload);
                }
             }
          }
          str_toUpper(cli->payloads[j].codec); // Put codec in uppercase
-         LM_DBG("Pos %d. Codec %s | Payload %s\n", j, cli->payloads[j].codec, cli->payloads[j].payload);
+         LM_INFO("Pos [%d]. Codec [%s] | Payload [%s]\n", j, cli->payloads[j].codec, cli->payloads[j].payload);
       }
    }
 
-   LM_DBG("Surfmotion payload struct\n");
+   LM_INFO("Surfmotion payload struct\n");
    for (j = 0; j < MAX_PAYLOADS; j++)
    {
       if (codecs[j].is_empty == 1)
       {
          str_toUpper(codecs[j].name); // Put codec in uppercase
          str_toUpper(codecs[j].sdpname); // Put codec in uppercase
-         LM_DBG("Pos %d. Codec %s | Payload %d\n", j, codecs[j].sdpname, codecs[j].payload);
+         LM_INFO("Pos [%d]. Codec [%s] | Payload [%d]\n", j, codecs[j].sdpname, codecs[j].payload);
       }
    }
 
@@ -746,28 +749,24 @@ match_payload(client * cli, char * chosen_payload)
    {
       if (cli->payloads[i].is_empty == 1) //Loop throw the client payload list to find a payload
       {
-         LM_INFO("Client codec %s | payload %s\n", cli->payloads[i].codec, cli->payloads[i].payload);
+         LM_INFO("Client codec [%s] | payload [%s]\n", cli->payloads[i].codec, cli->payloads[i].payload);
          int l = 0;
          for (l = 0; l < MAX_PAYLOADS; l++) // Loop to the sufmotion payload to try and match a client payload.
          {
             if (codecs[l].is_empty != 1)
                continue; // Advance cyle
 
-            LM_INFO("Compare. cli codec %s | surf codec %s\n", cli->payloads[i].codec, codecs[l].sdpname);
+            LM_INFO("Compare. cli codec [%s] | surf codec [%s[\n", cli->payloads[i].codec, codecs[l].sdpname);
 
             //TODO: Change to comprate . codec with  "telephone-event"
             if (codecs[l].is_empty == 1 && (strcmp(cli->payloads[i].codec, codecs[l].sdpname) == 0)
                   && (strcmp(cli->payloads[i].codec, "TELEPHONE-EVENT") != 0))
             {
-               /*Copy attribute lines suported by media relay of the matched codec.Later willl be included in sdp message
-                sprintf(cli->payloads[i].attr_rtpmap_line, surf_attributes.payloads[l].attr_rtpmap_line);
-                sprintf(cli->payloads[i].attr_fmtp_line,surf_attributes.payloads[l].attr_fmtp_line);*/
-
                /// Assign the media relay codec name to client codec name
                sprintf(cli->payloads[i].codec, "%s", codecs[l].name);
 
                sprintf(chosen_payload, cli->payloads[i].payload);
-               LM_INFO("Chosen codec is. Payload %s | codec %s\n", chosen_payload, cli->payloads[i].codec);
+               LM_NOTICE("Found supported codec: codec=%s | payload=%s | b2bcallid=%d | client_id=%d\n", cli->payloads[i].codec,chosen_payload,connection->id,cli->id);
 
                bzero(cli->payload_str, 50);
                sprintf(cli->payload_str, "%s", chosen_payload);
@@ -780,7 +779,7 @@ match_payload(client * cli, char * chosen_payload)
                   {
                      if ((strcmp(cli->payloads[k].codec, "TELEPHONE-EVENT") == 0)) //Check if is a dtmf payload
                      {
-                    	LM_INFO("Cleaning codec not matched. codec %s | payload %s\n", cli->payloads[k].codec, cli->payloads[k].payload);
+                    	LM_INFO("Cleaning codec not matched. codec [%s] | payload [%s]\n", cli->payloads[k].codec, cli->payloads[k].payload);
                         char payload_str_tmp[50]; //Used to aid in sprintf function
                         bzero(payload_str_tmp, 50);
                         sprintf(payload_str_tmp, cli->payload_str); // Copy client payload list ti payload_str_tmp
@@ -797,7 +796,7 @@ match_payload(client * cli, char * chosen_payload)
          }
       }
    }
-   LM_ERR("ERROR, No codec found. client_id=%d | client state=%d | src_ip=%s | tag %s | Error code=%d\n",
+   LM_ERR("ERROR, No codec found. client_id=%d | client state=%d | src_ip=%s | tag=%s | Errorcode=%d\n",
 		   cli->id,cli->s,cli->src_ip,cli->tag,UNSUPPORTED_MEDIA_TYPE);
    return UNSUPPORTED_MEDIA_TYPE;
 }
@@ -839,7 +838,7 @@ get_all_supported_att(char * att)
    char att_copy[strlen(att)+2];
    snprintf(att_copy,strlen(att)+1,att);
    remove_newline_str(att_copy);
-   LM_DBG("Supported att list : [%s]\n", att_copy);
+   LM_INFO("Supported attribute list : [%s]\n", att_copy);
 
    return status;
 }
@@ -913,19 +912,19 @@ put_attribute(char * sdp, int * i, char * type, char * payload, char * codec, pa
    int j = 0;
    for (j = 0; j < MAX_PAYLOADS; j++)
    {
-      LM_DBG("Compare. is_empty=%d | %s with %s\n", payloads[j].is_empty, payloads[j].payload, payload);
+      LM_INFO("Compare %s with %s. is_empty=%d\n", payloads[j].payload, payload,payloads[j].is_empty);
       if (payloads[j].is_empty == 1 && strcmp(payloads[j].payload, payload) == 0) //Match for list of payloads received
       {
          if (strcmp(type, "rtpmap") == 0)
          {
             sprintf(payloads[j].attr_rtpmap_line, "%s\r\n", line);
             sprintf(payloads[j].codec, codec); // Copy codec value to payloads structure. Codec name is in "rtpmap" line
-            LM_DBG("Type=%s | inserted codec %s with payload %s\n", type, payloads[j].codec, payload);
+            LM_INFO("Type=%s | inserted codec [%s] with payload [%s]\n", type, payloads[j].codec, payload);
             break;
          }
          if ((strcmp(type, "fmtp") == 0))
          {
-            LM_DBG("Type=%s. Inserted fmtp line\n", type);
+            LM_INFO("Type=%s. Inserted fmtp line\n", type);
             sprintf(payloads[j].attr_fmtp_line, "%s\r\n", line);
          }
 
@@ -936,7 +935,7 @@ put_attribute(char * sdp, int * i, char * type, char * payload, char * codec, pa
          {
             if (payloads[k].is_empty == 1 && strcmp(payloads[k].payload, payload) == 0)
             {
-               LM_ERR("ERROR: Found the same payload more than once. Payload %s | Type %s | Error code=%d\n",payload,type,GENERAL_ERROR);
+               LM_ERR("ERROR: Found the same payload more than once. Payload=%s | type=%s | Errorcode=%d\n",payload,type,GENERAL_ERROR);
                return GENERAL_ERROR;
                break;
             }
@@ -947,8 +946,8 @@ put_attribute(char * sdp, int * i, char * type, char * payload, char * codec, pa
    }
    if (j == MAX_PAYLOADS)
    {
-      LM_WARN("WARNING.Failed to match payload %s for attribute line : %s\n", payload, line);
-      LM_WARN("WARNING.Could be video payloads not yet supported by this version\n");
+      LM_INFO("WARNING.Failed to match payload %s for attribute line : %s\n", payload, line);
+      LM_INFO("WARNING.Could be video payloads not yet supported by this version\n");
    }
 
    return OK;
@@ -979,7 +978,7 @@ insert_after_b2b(struct sip_msg *msg, char * to_insert, struct lump* l)
    memcpy(s, to_insert, len);
    if (insert_new_lump_after(l, s, len, 0) == 0)
    {
-      LM_ERR("could not insert new lump. String to insert %s | Error code=%d\n",to_insert,PARSER_ERROR);
+      LM_ERR("could not insert new lump. String to insert [%s] | Errorcode=%d\n",to_insert,PARSER_ERROR);
       return PARSER_ERROR;
    }
 
@@ -1005,13 +1004,13 @@ insert_b2b(struct sip_msg *msg, char * position, char * to_insert)
 
    if ((l = anchor_lump(msg, position - msg->buf, 0, 0)) == 0)
    {
-      LM_ERR("insertion failed\n");
+      LM_ERR("Insertion failed\n");
       return PARSER_ERROR;
    }
 
    if (insert_after_b2b(msg, to_insert, l) == -1)
    {
-      LM_ERR("Failed to insert string. String to insert %s | Erro code %d\n",to_insert,PARSER_ERROR);
+      LM_ERR("Failed to insert string. String to insert [%s] | Errorcode=%d\n",to_insert,PARSER_ERROR);
       return PARSER_ERROR;
    }
 
@@ -1037,7 +1036,7 @@ delete_b2b(struct sip_msg *msg, char * position, int to_del)
 
    if ((l = del_lump(msg, position - msg->buf, to_del, 0)) == 0)
    {
-      LM_ERR("Error, Deletion failed. Erro code %d\n",PARSER_ERROR);
+      LM_ERR("Error, Deletion failed. Errorcode=%d\n",PARSER_ERROR);
       return PARSER_ERROR;
    }
 
@@ -1064,13 +1063,13 @@ replace_b2b(struct sip_msg *msg, char * position, int to_del, char * to_insert)
 
    if ((l = del_lump(msg, position - msg->buf, to_del, 0)) == 0)
    {
-      LM_ERR("Error. del_lump failed. Error code=%d\n",PARSER_ERROR);
+      LM_ERR("Error. del_lump failed. Errorcode=%d\n",PARSER_ERROR);
       return PARSER_ERROR;
    }
 
    if (insert_after_b2b(msg, to_insert, l) != OK)
    {
-      LM_ERR("Failed to insert string. String to insert %s| Error code=%d\n",to_insert,PARSER_ERROR);
+      LM_ERR("Failed to insert string. String to insert [%s]| Errorcode=%d\n",to_insert,PARSER_ERROR);
       return PARSER_ERROR;
    }
 
@@ -1104,11 +1103,12 @@ get_response_status(char * buffer, conn * connection)
          connection->xcoder_id = atoi(response);
          if (connection->xcoder_id != connection->id)
          {
-            LM_ERR("ERROR. Different connection call id and xcoder call id.Conn call id : %d | conn_state=%d | xcoder call id | %d. Error code=%d\n",
+            LM_ERR("ERROR. Different connection call id and xcoder_call_id.b2bcallid=%d | conn_state=%d | call_id=%d | Errorcode=%d\n",
                   connection->id, connection->s, connection->xcoder_id, XCODER_CMD_ERROR);
             return XCODER_CMD_ERROR;
          }
-         LM_INFO("Call id is : %d\n", connection->xcoder_id);
+         else
+        	LM_NOTICE("Received response to create call: b2bcallid=%d | xcallid=%d",connection->id,connection->xcoder_id);
       }
 
       if (strcmp(response, "status") == 0)
@@ -1124,10 +1124,11 @@ get_response_status(char * buffer, conn * connection)
          }
          else
          {
-            LM_INFO("ERROR: Bad response from xcoder : %s\n", response);
+            LM_NOTICE("ERROR: Bad response from xcoder : %s\n", response);
             return XCODER_CMD_ERROR;
          }
       }
+
 
       bzero(response, 64); // Clean response
       move_to_end(buffer, &i); //Move to newline
@@ -1152,6 +1153,12 @@ get_ports_xcoder(char * response, char * port)
    char att_temp[20];
    char value_xcoder[20];
 
+   //Remove \r and \n from sip message
+
+   char msg_copy[strlen(response)];
+   snprintf(msg_copy,strlen(response)+1,response);
+   remove_newline_str(msg_copy);
+
    while (response[pos] != '\0')
    {
       if (response[pos] == '\n' && response[pos + 1] != '\0')
@@ -1167,12 +1174,12 @@ get_ports_xcoder(char * response, char * port)
             get_word(response, &pos, port);
             if (port != NULL)
             {
-               LM_DBG("Port retrieved is %s\n", port);
+               LM_INFO("Port retrieved is %s\n", port);
                return OK;
             }
             else
             {
-               LM_ERR("ERROR. Error retrieving port. Response %s | Error code=%d\n",response,XCODER_CMD_ERROR);
+               LM_ERR("ERROR. Error retrieving port. Response %s | Errorcode=%d\n",msg_copy,XCODER_CMD_ERROR);
                return XCODER_CMD_ERROR;
             }
          }
@@ -1182,12 +1189,12 @@ get_ports_xcoder(char * response, char * port)
             get_word(response, &pos, value_xcoder);
             if ((strcmp(value_xcoder, "OK") == 0))
             {
-               LM_DBG("Message status is %s\n", value_xcoder);
+               LM_INFO("Message status is %s\n", value_xcoder);
                status = OK;
             }
             else
             {
-               LM_ERR("Error. Wrong status value : %s | Response %s | Error code=%d \n", value_xcoder, response, XCODER_CMD_ERROR);
+               LM_ERR("Error. Wrong status value : %s | Response %s | Errorcode=%d \n", value_xcoder, msg_copy, XCODER_CMD_ERROR);
                status = XCODER_CMD_ERROR;
             }
          }
@@ -1195,7 +1202,7 @@ get_ports_xcoder(char * response, char * port)
          {
             pos++;
             get_word(response, &pos, value_xcoder);
-            LM_ERR("ERROR. xcoder error_id : %s | Response %s\n", value_xcoder, response);
+            LM_ERR("ERROR. xcoder error_id : %s | Response %s\n", value_xcoder, msg_copy);
 
             if ((strcmp(value_xcoder, "3") == 0))
                return SERVER_SERVICE_UNAVAILABLE;
@@ -1206,7 +1213,7 @@ get_ports_xcoder(char * response, char * port)
       pos++;
    }
 
-   LM_ERR("Error : No port retrieved. Response %s | Error code=%d\n", response, status);
+   LM_ERR("Error : No port retrieved. Response %s | Errorcode=%d\n", msg_copy, status);
    return status;
 }
 
@@ -1250,7 +1257,7 @@ read_from_xcoder(char * to_read, socket_list * socket,int timeout)
       return SOCKET_ERROR;
    }
 
-   LM_DBG("Set waiting socket %d\n", socket->fd);
+   LM_INFO("Set waiting socket %d\n", socket->fd);
    int number_tries = 0;
    while (1)
    {
@@ -1261,11 +1268,11 @@ read_from_xcoder(char * to_read, socket_list * socket,int timeout)
       bzero(read_tmp, XCODER_MAX_MSG_SIZE);
       bzero(message, XCODER_MAX_MSG_SIZE);
 
-      LM_DBG("Epoll unblocked\n");
+      LM_INFO("Epoll unblocked\n");
 
       if (n < 0)
       {
-         LM_INFO("No file descriptor ready to read. Epoll failed in fd %d | Error code=%d\n", socket->fd,XCODER_CMD_ERROR);
+         LM_NOTICE("No file descriptor ready to read. Epoll failed in fd %d | Errorcode=%d\n", socket->fd,XCODER_CMD_ERROR);
          epoll_ctl(epfd, EPOLL_CTL_DEL, socket->fd, &ev);
          close(epfd);
          return XCODER_CMD_ERROR;
@@ -1276,7 +1283,7 @@ read_from_xcoder(char * to_read, socket_list * socket,int timeout)
          if (number_tries == 3)
          {
             time_elapsed = (time(NULL) - read_init_time);
-            LM_DBG("Xcoder timeout in fd %d | time %ld | Error code=%d\n", socket->fd, time_elapsed,XCODER_TIMEOUT);
+            LM_INFO("Xcoder timeout in fd %d | time %ld | Errorcode=%d\n", socket->fd, time_elapsed,XCODER_TIMEOUT);
             epoll_ctl(epfd, EPOLL_CTL_DEL, socket->fd, &ev);
             close(epfd);
             return XCODER_TIMEOUT;
@@ -1292,7 +1299,7 @@ read_from_xcoder(char * to_read, socket_list * socket,int timeout)
 
          if (size < 0)
          {
-            LM_ERR("No information readed. Error code=%d\n",XCODER_CMD_ERROR);
+            LM_ERR("No information readed. Errorcode=%d\n",XCODER_CMD_ERROR);
             epoll_ctl(epfd, EPOLL_CTL_DEL, socket->fd, &ev);
             close(epfd);
             return XCODER_CMD_ERROR;
@@ -1313,7 +1320,7 @@ read_from_xcoder(char * to_read, socket_list * socket,int timeout)
          }
          else
          {
-            LM_ERR("No input for fd %d | Error code=%d\n", socket->fd,XCODER_CMD_ERROR);
+            LM_ERR("No input for fd %d | Errorcode=%d\n", socket->fd,XCODER_CMD_ERROR);
             epoll_ctl(epfd, EPOLL_CTL_DEL, socket->fd, &ev);
             close(epfd);
             return XCODER_CMD_ERROR;
@@ -1356,7 +1363,7 @@ get_socket(void)
    }
    else
    {
-      LM_ERR("ran %d positions without finding a free one. Error code=%d\n", i,GENERAL_ERROR);
+      LM_ERR("ran %d positions without finding a free one. Errorcode=%d\n", i,GENERAL_ERROR);
 
       lock_release(socket_lock);
       return GENERAL_ERROR;
@@ -1377,7 +1384,7 @@ get_socket(void)
  *****************************************************************************/
 
 int
-talk_to_xcoder(char * to_send, char * received, int message_number)
+talk_to_xcoder(char * to_send,int message_number, char * received)
 {
    int status = OK;
    socket_list * socket = NULL;
@@ -1385,7 +1392,7 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
    int sock_index = get_socket();
    if (sock_index < 0)
    {
-      LM_ERR("Error getting socket. Error code=%d\n",GENERAL_ERROR);
+      LM_ERR("Error getting socket. Errorcode=%d\n",GENERAL_ERROR);
       return GENERAL_ERROR;
    }
    socket = &(fd_socket_list[sock_index]);
@@ -1397,23 +1404,26 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
    char buffer[XCODER_MAX_MSG_SIZE];
    bzero(buffer, XCODER_MAX_MSG_SIZE);
 
-   LM_DBG("Checking if input buffer is emty. fd %d\n",socket->fd);
+   LM_INFO("Checking if input buffer is emty. fd %d\n",socket->fd);
    while( (status=read_from_xcoder(buffer, socket,0)), status==OK )
    {
-	   LM_ERR("ERROR. Buffer was not empty. Message read : %s. Proceeding to send message.\n",buffer);
+	   char read_copy[strlen(buffer)+1];
+	   snprintf(read_copy,strlen(buffer)+1,buffer);
+	   remove_newline_str(read_copy);
+	   LM_ERR("ERROR. Buffer was not empty. Message read : %s. Proceeding to send message.\n",read_copy);
    }
 
    lock_get(socket_lock);
 
    switch(status)
    {
-   	  case SOCKET_ERROR : LM_ERR("Failed to check if buffer is empty, fd %d. Error code=%d. Trying to send message\n", socket->fd,status);
+   	  case SOCKET_ERROR : LM_ERR("Failed to check if buffer is empty, fd %d. Errorcode=%d. Trying to send message\n", socket->fd,status);
    	  	  	  	  	  	  break;
-   	  case XCODER_CMD_ERROR : LM_DBG("Buffer is empty. fd %d. Proceeding to send message\n",socket->fd);
+   	  case XCODER_CMD_ERROR : LM_INFO("Buffer is empty. fd %d. Proceeding to send message\n",socket->fd);
    	  	  	  	  	  	  	  break;
-   	  case XCODER_TIMEOUT : LM_DBG("Buffer is empty, reached timeout value without reading, fd %d. Proceeding to send message\n",socket->fd);
+   	  case XCODER_TIMEOUT : LM_INFO("Buffer is empty, reached timeout value without reading, fd %d. Proceeding to send message\n",socket->fd);
    	  	  	  	  	  	  	  break;
-   	  default : LM_DBG("Buffer is empty, fd %d. Proceeding to send message\n",socket->fd);
+   	  default : LM_INFO("Buffer is empty, fd %d. Proceeding to send message\n",socket->fd);
    	  	  	  	  break;
    }
    socket->busy = 0;
@@ -1423,13 +1433,13 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
    char cmd_copy[strlen(to_send)+1];
    snprintf(cmd_copy,strlen(to_send)+1,to_send);
    remove_newline_str(cmd_copy);
-   LM_INFO("Command to xcoder [%s]\n", cmd_copy);
+   LM_NOTICE("Command to xcoder. body [%s] | fd [%d]\n",cmd_copy,socket->fd);
 
    n = write(socket->fd, to_send, len);
 
    if (n < len)
    {
-      LM_ERR("ERROR. Wrote %d characters in fd %d. Value that should be writen %d | String to be writen %s | Error code=%d\n", n, socket->fd, len,to_send,XCODER_CMD_ERROR);
+      LM_ERR("ERROR. Wrote %d characters in fd %d. Value that should be writen %d | String to be writen %s | Errorcode=%d\n", n, socket->fd, len,cmd_copy,XCODER_CMD_ERROR);
       lock_get(socket_lock);
       socket->busy = 0;
       lock_release(socket_lock);
@@ -1447,13 +1457,13 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
 
       switch(status)
       {
-      	  case SOCKET_ERROR : LM_ERR("Setting to not busy fd %d. Error code=%d\n", socket->fd,status);
+      	  case SOCKET_ERROR : LM_ERR("Setting to not busy fd %d. Errorcode=%d\n", socket->fd,status);
       	  	  	  	  	  	  break;
-      	  case XCODER_CMD_ERROR : LM_ERR("ERROR. Error reading from xcoder. fd %d | Error code=%d\n.",socket->fd,status);
+      	  case XCODER_CMD_ERROR : LM_ERR("ERROR. Error reading from xcoder. fd %d | Errorcode=%d\n.",socket->fd,status);
       	  	  	  	  	  	  	  break;
-      	  case XCODER_TIMEOUT : LM_ERR("ERROR. Error reading from xcoder, timeout value reached. fd %d | Error code=%d\n",socket->fd,status);
+      	  case XCODER_TIMEOUT : LM_ERR("ERROR. Error reading from xcoder, timeout value reached. fd %d | Errorcode=%d\n",socket->fd,status);
       	  	  	  	  	  	  	  break;
-      	  default : LM_ERR("ERROR. Error reading from xcoder. fd %d | Error code=%d\n.",socket->fd,status);
+      	  default : LM_ERR("ERROR. Error reading from xcoder. fd %d | Errorcode=%d\n.",socket->fd,status);
       	  	  	  	  break;
       }
       socket->busy = 0;
@@ -1473,7 +1483,7 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
    bzero(value, 128);
    get_value_from_str("msg_count",received,value);
    int rcv_msg_count = atoi(value);
-   LM_DBG("Checking msg_count. Send %d | Received %d\n",message_number,rcv_msg_count);
+   LM_INFO("Checking msg_count. Send %d | Received %d\n",message_number,rcv_msg_count);
 
    if(message_number!=message_number)
    {
@@ -1481,10 +1491,10 @@ talk_to_xcoder(char * to_send, char * received, int message_number)
 	   return XCODER_CMD_ERROR;
    }
 
-   LM_INFO("Message received [%s]\n", recv_copy);
+   LM_NOTICE("received from xcoder. body [%s] | fd [%d]\n", recv_copy,socket->fd);
    lock_get(socket_lock);
 
-   LM_DBG("Setting to not busy fd %d\n", socket->fd);
+   LM_INFO("Setting to not busy fd %d\n", socket->fd);
    socket->busy = 0;
 
    lock_release(socket_lock);
@@ -1515,11 +1525,11 @@ free_ports_client(client * cli)
    sprintf(buffer_sent, "xcoder/1.0\r\nmsg_type=command\r\nmsg_value=free_ports\r\nclient_id=%d\r\nmsg_count=%d\r\n<EOM>\r\n", cli->id,
          message_number); // Command to send to xcoder
 
-   status = talk_to_xcoder(buffer_sent, buffer_recv, message_number);
+   status = talk_to_xcoder(buffer_sent, message_number,buffer_recv);
 
    if (status != OK)
    {
-      LM_INFO("Error interacting with xcoder. Failed to free ports\n");
+      LM_NOTICE("Error interacting with xcoder. Failed to free ports\n");
       return status;
    }
 
@@ -1536,7 +1546,7 @@ free_ports_client(client * cli)
          i++; //Increment counter to advance character '='
          bzero(response, 64);
          read_until_end(buffer_recv, &i, response); // Read until end of line
-         LM_DBG("Status is : %s\n", response);
+         LM_INFO("Status is : %s\n", response);
 
          if (strcmp(response, "OK") == 0)
          {
@@ -1579,11 +1589,11 @@ get_port_b2b(client * cli, char * port)
    sprintf(buffer_sent,"xcoder/1.0\r\nmsg_type=command\r\nmsg_value=get_ports\r\nmsg_count=%d\r\nmedia_type=%c\r\nclient_id=%d\r\n<EOM>\r\n",
          message_number, cli->media_type[0], cli->id); // Command to send to xcoder
 
-   status = talk_to_xcoder(buffer_sent, buffer_recv, message_number);
+   status = talk_to_xcoder(buffer_sent, message_number,buffer_recv);
 
    if (status != OK)
    {
-      LM_INFO("Error interacting with xcoder.\n");
+      LM_NOTICE("Error interacting with xcoder.\n");
       return status;
    }
 
@@ -1603,7 +1613,7 @@ int
 get_conn_session(int * session)
 {
    int i, j = 0;
-   LM_DBG("Get conn session index\n");
+   LM_INFO("Get conn session index\n");
 
    for (i = 0; i < MAX_CONNECTIONS; i++)
    {
@@ -1618,7 +1628,7 @@ get_conn_session(int * session)
          {
             if (connections[j].clients[c].is_empty == 1)
             {
-               LM_ERR("Error: Empty connection has non-empty clients. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client user_name=%s | client tag=%s | client src_ip %s | Error code=%d\n",
+               LM_ERR("Error: Empty connection has non-empty clients. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | username=%s | tag=%s | src_ip %s | Errorcode=%d\n",
                      connections[j].id, connections[j].s, connections[j].call_id, connections[j].clients[c].id, connections[j].clients[c].user_name, connections[j].clients[c].tag, connections[j].clients[c].src_ip,SERVER_INTERNAL_ERROR);
 
                cancel_connection(&(connections[i]));
@@ -1640,7 +1650,7 @@ get_conn_session(int * session)
    }
    else
    {
-      LM_ERR("No empty connection found. Error code=%d\n",SERVER_SERVICE_UNAVAILABLE);
+      LM_ERR("No empty connection found. Errorcode=%d\n",SERVER_SERVICE_UNAVAILABLE);
       return SERVER_SERVICE_UNAVAILABLE;
    }
 
@@ -1662,7 +1672,7 @@ get_conn_session(int * session)
 int
 readline_C(struct sip_msg *msg, char * sdp, int * i, conn * connection, client * cli)
 {
-   LM_DBG("Processing connection information line, b2bcallid=%d | client_id=%d | user_name=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
+   LM_INFO("Processing connection information line, b2bcallid=%d | client_id=%d | username=%s | state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
    int spaces = 0; // Hold the number os space (' ') characters encounter by parser
    char ip_type[4];
    bzero(ip_type, 4);
@@ -1689,24 +1699,24 @@ readline_C(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      char conn_ip[25];
                      bzero(conn_ip, 25);
                      get_word(sdp, &position_to_read, conn_ip); // Get connection IP
-                     LM_DBG("Original conn ip : %s. b2bcallid=%d | client_id=%d | user_name=%s\n", conn_ip,connection->id,cli->id,cli->user_name);
+                     LM_INFO("Original conn ip : %s. b2bcallid=%d | client_id=%d | username=%s\n", conn_ip,connection->id,cli->id,cli->user_name);
                      sprintf(cli->conn_ip, conn_ip);
 
                      int len_to_end = count_length_to_end(sdp, pos);
                      if(replace_b2b(msg, &(message[pos]), len_to_end, media_relay)!=OK)
                      {
-                    	 LM_ERR("ERROR. Failed to insert media relay ip in the sip message body. Media relay ip %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                    	 LM_ERR("ERROR. Failed to insert media relay ip in the sip message body. Media relay ip %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                     			 media_relay,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                     	 return PARSER_ERROR;
                      }
-                     LM_INFO("Inserted media relay ip %s. b2bcallid=%d | client_id=%d | user_name=%s\n",media_relay,connection->id,cli->id,cli->user_name);
+                     LM_INFO("Inserted media relay ip %s. b2bcallid=%d | client_id=%d | username=%s\n",media_relay,connection->id,cli->id,cli->user_name);
                      *i = pos;
                      move_to_end(sdp, i);
                      return OK;
                   }
                   else
                   {
-                     LM_ERR("Wrong IP type : %s. Conn id %d | conn_state=%d | conn call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s |Error code=%d\n",
+                     LM_ERR("Wrong IP type : %s. Conn id %d | conn_state=%d | conn call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s |Errorcode=%d\n",
                     		 ip_type,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                      return PARSER_ERROR;
                   }
@@ -1725,7 +1735,7 @@ readline_C(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
       pos++;
    *i = pos;
 
-   LM_DBG("Successfully connection iformation line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s\n",
+   LM_INFO("Successfully connection iformation line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s\n",
       		   connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name);
    return OK;
 }
@@ -1745,7 +1755,7 @@ readline_C(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
 int
 readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client * cli)
 {
-   LM_DBG("Processing owner line, b2bcallid=%d | client_id=%d | user_name=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
+   LM_INFO("Processing owner line, b2bcallid=%d | client_id=%d | username=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
    char ip_type[4];
    char original_dst_ip[25];
    bzero(ip_type, 4);
@@ -1766,7 +1776,7 @@ readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
             {
                case 4:
                   get_word(sdp, &pos, ip_type);
-                  LM_DBG("ip_type : %s. b2bcallid=%d | client_id=%d | user_name=%s | client state=%d\n", ip_type,connection->id,cli->id,cli->user_name,cli->s);
+                  LM_INFO("ip_type : %s. b2bcallid=%d | client_id=%d | username=%s | client state=%d\n", ip_type,connection->id,cli->id,cli->user_name,cli->s);
                   break; //If spaces==4 then retrieve iptype
 
                case 5: //If spaces==5 then retrieve and subst ip
@@ -1776,7 +1786,7 @@ readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      int len_to_end = count_length_to_end(sdp, pos);
                      if(replace_b2b(msg, &(message[pos]), len_to_end, media_relay)!=OK)
                      {
-                    	 LM_ERR("ERROR. Failed to insert media relay ip in the sip message body. Media relay ip %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                    	 LM_ERR("ERROR. Failed to insert media relay ip in the sip message body. Media relay ip %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                     			 media_relay,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                     	 return PARSER_ERROR;
                      }
@@ -1787,7 +1797,7 @@ readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                   }
                   else
                   {
-                     LM_ERR("Wrong IP type : %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                     LM_ERR("Wrong IP type : %s. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                     		 ip_type,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                      return PARSER_ERROR;
                   }
@@ -1807,7 +1817,7 @@ readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
       pos++;
    *i = pos;
 
-   LM_DBG("Successfully processed owner line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s\n",
+   LM_INFO("Successfully processed owner line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s\n",
    		   connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name);
    return OK;
 }
@@ -1827,7 +1837,7 @@ readline_O(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
 int
 readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client * cli)
 {
-   LM_DBG("Processing media description line, b2bcallid=%d | client_id=%d | user_name=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
+   LM_INFO("Processing media description line, b2bcallid=%d | client_id=%d | username=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
    char tmp_call_type[10];
    char tmp_src_payloads[50];
    char port[7];
@@ -1848,7 +1858,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
          case '=':
             pos++;
             get_word(sdp, &pos, tmp_call_type);
-            LM_DBG("Call type is %s. b2bcallid=%d | client_id=%d | user_name=%s\n", tmp_call_type,connection->id,cli->id,cli->user_name);
+            LM_INFO("Call type is %s. b2bcallid=%d | client_id=%d | username=%s\n", tmp_call_type,connection->id,cli->id,cli->user_name);
             insert_call_type(connection, cli, tmp_call_type); //Insert call type into structure
             break;
 
@@ -1872,15 +1882,15 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      case INVITE_C:
                         if ((strcmp(tmp_call_type, "audio") == 0))
                         {
-                           LM_DBG("Retrieving audio port for first client. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,cli->id,cli->user_name);
+                           LM_INFO("Retrieving audio port for first client. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,cli->id,cli->user_name);
                            status = get_port_b2b(cli, port);
                            if (status != OK)
                            {
-                              LM_ERR("Error retrieving port. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                              LM_ERR("Error retrieving port. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                             		  connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
                               return status;
                            }
-                           LM_INFO("Port number returned by xcoder is %s. b2bcallid=%d | client_id=%d | user_name=%s\n",port,connection->id,cli->id,cli->user_name);
+                           LM_INFO("Port number returned by xcoder is %s. b2bcallid=%d | client_id=%d | username=%s\n",port,connection->id,cli->id,cli->user_name);
                            replace_b2b(msg, &(message[pos]), len_to_token, port);
                            sprintf(cli->dst_audio, port);
                         }
@@ -1895,7 +1905,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                            // Video not available
                         }
                         else
-                           LM_ERR("Different media type. Call type %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                           LM_ERR("Different media type. Call type %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                         		   tmp_call_type,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
                         break;
                      case ON_HOLD:
@@ -1907,15 +1917,15 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      case TWO_OK:
                         if ((strcmp(tmp_call_type, "audio") == 0))
                         {
-                           LM_DBG("Retrieving audio port for second client. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,cli->id,cli->user_name);
+                           LM_INFO("Retrieving audio port for second client. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,cli->id,cli->user_name);
                            status = get_port_b2b(cli, port);
                            if (status != OK)
                            {
-                               LM_ERR("Error retrieving port. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                               LM_ERR("Error retrieving port. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                             		   connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
                               return status;
                            }
-                           LM_INFO("Port number returned by xcoder is %s. b2bcallid=%d | client_id=%d | user_name=%s\n",port,connection->id,cli->id,cli->user_name);
+                           LM_INFO("Port number returned by xcoder is %s. b2bcallid=%d | client_id=%d | username=%s\n",port,connection->id,cli->id,cli->user_name);
                            replace_b2b(msg, &(message[pos]), len_to_token, port);
                            sprintf(cli->dst_audio, port);
                         }
@@ -1929,18 +1939,18 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                            // Video not available
                         }
                         else
-                            LM_ERR("Different media type. Call type %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                            LM_ERR("Different media type. Call type %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                          		   tmp_call_type,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
                         break;
 
                      default:
-                         LM_ERR("Error, Wrong connection state. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                         LM_ERR("Error, Wrong connection state. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                         		 connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
                          break;
                   }
                   get_word(sdp, &pos, original_port);
                   sprintf(cli->original_port, original_port);
-                  LM_DBG("Original port is %s. b2bcallid=%d | client_id=%d | user_name=%s\n", original_port,connection->id,cli->id,cli->user_name);
+                  LM_INFO("Original port is %s. b2bcallid=%d | client_id=%d | username=%s\n", original_port,connection->id,cli->id,cli->user_name);
                   break;
                }
                case 3:
@@ -1956,7 +1966,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      case OFF_HOLD:
                         ;
                      case INVITE_C:
-                        LM_INFO("Inserting payloads %s. b2bcallid=%d | client_id=%d | user_name=%s", tmp_src_payloads,connection->id,cli->id,cli->user_name);
+                        LM_INFO("Inserting payloads %s. b2bcallid=%d | client_id=%d | username=%s", tmp_src_payloads,connection->id,cli->id,cli->user_name);
                         insert_payloads(connection, cli, tmp_src_payloads);
 
                         char payload_lst[128];
@@ -1972,14 +1982,14 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                      case EARLY_MEDIA_C:
                         ;
                      case TWO_OK:
-                        LM_DBG("Inserting payloads %s. b2bcallid=%d | client_id=%d | user_name=%s\n", tmp_src_payloads,connection->id,cli->id,cli->user_name);
+                        LM_INFO("Inserting payloads %s. b2bcallid=%d | client_id=%d | username=%s\n", tmp_src_payloads,connection->id,cli->id,cli->user_name);
                         insert_payloads(connection, cli, tmp_src_payloads);
 
                         client * cli_dst = NULL;
                         get_client(connection, cli, &cli_dst); //Get destination client
                         if (cli_dst == NULL)
                         {
-                           LM_ERR("ERROR, error getting destination client (NULL CLIENT). b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                           LM_ERR("ERROR, error getting destination client (NULL CLIENT). b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                          		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                            return PARSER_ERROR;
                         }
@@ -1988,7 +1998,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                         break;
 
                      default:
-                        LM_ERR("No valid connection state.b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                        LM_ERR("No valid connection state.b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                          		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                         return PARSER_ERROR;
                         break;
@@ -1996,7 +2006,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
 
                   move_to_end(sdp, &pos);
                   *i = pos;
-                  LM_DBG("Successfully processed media description line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s\n",
+                  LM_INFO("Successfully processed media description line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s\n",
                 		  connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name);
                   return OK;
                   break;
@@ -2015,7 +2025,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
       pos++;
    *i = pos;
 
-   LM_DBG("Successfully processed media description line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s\n",
+   LM_INFO("Successfully processed media description line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s\n",
 	connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name);
 
    return OK;
@@ -2036,7 +2046,7 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
 int
 readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client * cli)
 {
-   LM_DBG("Starting to read attribute line. b2bcallid=%d | client_id=%d | user_name=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
+   LM_INFO("Starting to read attribute line. b2bcallid=%d | client_id=%d | username=%s | client state=%d\n",connection->id,cli->id,cli->user_name,cli->s);
    int begin = *i;
    int pos = *i;
    int status = OK;
@@ -2058,7 +2068,7 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
          {
             int len_to_end_tmp = count_length_to_end(sdp, begin);
             LM_INFO("Bypassing line : %.*s\n", len_to_end_tmp, &(sdp[begin]));
-            LM_DBG("Attribute line different from pattern : a=[a-zA-Z0-9]+:.+\n");
+            LM_INFO("Attribute line different from pattern : a=[a-zA-Z0-9]+:.+\n");
             move_to_end(sdp, &begin);
             pos = begin;
             break;
@@ -2067,7 +2077,7 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
          pos++; //Advance the position ':'
          if (get_word(sdp, &pos, payload_tmp) != OK) //Read attribute value (payload)
          {
-            LM_ERR("ERRO: Error while parsing attribute line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+            LM_ERR("ERRO: Error while parsing attribute line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
             return PARSER_ERROR;
          }
@@ -2078,11 +2088,11 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
             status = read_until_char(sdp, &pos, '/', codec);
             if (status != OK || (strlen(codec) < 1))
             {
-               LM_ERR("ERROR. Error parsing codec for payload %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+               LM_ERR("ERROR. Error parsing codec for payload %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		   payload_tmp,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                return PARSER_ERROR;
             }
-            LM_INFO("Retrieved payload %s and codec %s. b2bcallid=%d | client_id=%d | user_name=%s \n",payload_tmp, codec,connection->id,cli->id,cli->user_name);
+            LM_INFO("Retrieved codec info. b2bcallid=%d | client_id=%d | codec=%s | payload=%s.\n",connection->id,cli->id,codec,payload_tmp);
          }
 
          if (strcmp(type_temp, "rtpmap") == 0 || strcmp(type_temp, "fmtp") == 0)
@@ -2090,13 +2100,13 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
             int len_to_end = count_length_to_end(sdp, begin); //Calculate number of characters until end of line(\r or \n or \0)
             if (delete_b2b(msg, &(message[begin]), (len_to_end + 2)) != OK) //Delete characters until end of line (+2 means \r\n, the line termination)
             {
-               LM_ERR("ERRO: Error while deleting in attribute line.b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+               LM_ERR("ERRO: Error while deleting in attribute line.b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                return PARSER_ERROR;
             }
             if (put_attribute(sdp, &begin, type_temp, payload_tmp, codec, cli->payloads) != OK) //Insert the attribute in the client structure
             {
-               LM_ERR("ERROR: Error putting attribute.Type_temp %s | payload_tmp %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+               LM_ERR("ERROR: Error putting attribute.Type_temp %s | payload_tmp %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		   type_temp, payload_tmp,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                return PARSER_ERROR;
             }
@@ -2106,7 +2116,7 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
             int len_to_end = count_length_to_end(sdp, begin); //Calculate number of characters until end of line(\r or \n or \0)
             if (delete_b2b(msg, &(message[begin]), (len_to_end + 2)) != OK) //Delete characters until end of line (+2 means \r\n, the line termination)
             {
-               LM_ERR("ERRO: Error while deleting in attribute line. Type %s | length %d | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+               LM_ERR("ERRO: Error while deleting in attribute line. Type %s | length %d | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		   type_temp,len_to_end,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                return PARSER_ERROR;
             }
@@ -2141,7 +2151,7 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
 int
 readLine(struct sip_msg *msg, char * sdp, int * i, conn * connection, client * cli)
 {
-   LM_DBG("Read sdp line\n");
+   LM_INFO("Read sdp line\n");
    int pos = *i;
    switch (sdp[pos])
    {
@@ -2204,7 +2214,7 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
 
    if (connection->s != PENDING && connection->s != TWO_OK)
    {
-      LM_DBG("Cleaning client structure. b2bcallid=%d | client_id=%d | client_state=%d | user_name=%s\n",connection->id,cli->id,cli->s,cli->user_name);
+      LM_INFO("Cleaning client structure. b2bcallid=%d | client_id=%d | client_state=%d | username=%s\n",connection->id,cli->id,cli->s,cli->user_name);
       int l = 0;
 
       bzero(cli->original_port, 7);
@@ -2234,16 +2244,16 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
          if (status == VIDEO_UNSUPPORTED)
          {
             ///////////// Deleting m=video line and remaining sdp content
-            LM_INFO("Video is not supported. Deleting media video line from sdp content. b2bcallid=%d | client_id=%d | user_name=%s\n"
+            LM_INFO("Video is not supported. Deleting media video line from sdp content. b2bcallid=%d | client_id=%d | username=%s\n"
             		,connection->id,cli->id,cli->user_name);
 
             int to_del = msg->len - (&(message[begin_line]) - msg->buf);
-            LM_DBG("Characters to delete in original message %d\n", to_del);
+            LM_INFO("Characters to delete in original message %d\n", to_del);
 
             if (delete_b2b(msg, &(message[begin_line]), to_del) != OK)
             {
                //Delete characters until end of line (+2 means \r\n, the line termination)
-               LM_ERR("ERROR: Error while deleting media video line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+               LM_ERR("ERROR: Error while deleting media video line. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		   connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
                return PARSER_ERROR;
             }
@@ -2252,7 +2262,7 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
          }
          else
          {
-            LM_ERR("ERROR: Error in parsing. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+            LM_ERR("ERROR: Error in parsing. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
             return status;
          }
@@ -2263,10 +2273,10 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
    char chosen_payload[32];
    bzero(chosen_payload, 32);
 
-   status = match_payload(cli, chosen_payload);
+   status = match_payload(connection, cli, chosen_payload);
    if (status != OK)
    {
-      LM_ERR("ERROR: while matching payload. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+      LM_ERR("ERROR: while matching payload. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
       return status;
    }
@@ -2301,7 +2311,7 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
       { // Insert chosen payload
          if (cli->dst_ip == '\0' || cli->dst_ip == NULL)
          {
-            LM_ERR("ERROR: Empty destination ip. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+            LM_ERR("ERROR: Empty destination ip. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
             return PARSER_ERROR;
          }
@@ -2310,7 +2320,7 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
          get_client(connection, cli, &cli_dst); // Get destination client to insert the chosen payload
          if (cli_dst == NULL)
          {
-            LM_ERR("ERROR: No destination client encountered. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+            LM_ERR("ERROR: No destination client encountered. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
             		connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
             return PARSER_ERROR;
          }
@@ -2327,12 +2337,12 @@ parse_sdp_b2b(struct sip_msg *msg, char ** sdp_origin, conn * connection, client
       }
 
       default:
-         LM_ERR("ERROR: Wrong connection state. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+         LM_ERR("ERROR: Wrong connection state. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
         		 connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
          return PARSER_ERROR;
          break;
    }
-   LM_DBG("Successfully parsed sdp message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | user_name=%s\n"
+   LM_INFO("Successfully parsed sdp message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s\n"
 		   ,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name);
    //Successfully parsed client
 
@@ -2352,7 +2362,7 @@ init_payloads(payload_struct * payloads)
    int i = 0;
    if (payloads == NULL)
    {
-      LM_ERR("ERROR: Null payload_struct received. Error code=%d\n",INIT_ERROR);
+      LM_ERR("ERROR: Null payload_struct received. Errorcode=%d\n",INIT_ERROR);
       return INIT_ERROR;
    }
    for (i = 0; i < MAX_PAYLOADS; i++)
@@ -2365,7 +2375,7 @@ init_payloads(payload_struct * payloads)
    }
    if (i != MAX_PAYLOADS)
    {
-      LM_ERR("ERROR: error initializing payload structure. Error code=%d\n",INIT_ERROR);
+      LM_ERR("ERROR: error initializing payload structure. Errorcode=%d\n",INIT_ERROR);
       return INIT_ERROR;
    }
 
@@ -2413,7 +2423,7 @@ init_structs(void)
          status = init_payloads(connections[i].clients[k].payloads);
          if (status != OK)
          {
-            LM_ERR("ERROR. Error initializing client payload structure. Error code=%d\n",INIT_ERROR);
+            LM_ERR("ERROR. Error initializing client payload structure. Errorcode=%d\n",INIT_ERROR);
             return INIT_ERROR;
          }
          connections[i].clients[k].s = EMPTY;
@@ -2423,7 +2433,7 @@ init_structs(void)
 
    if (i != MAX_CONNECTIONS || status != OK)
    {
-      LM_ERR("ERROR: error initializing structures. Error code=%d\n",INIT_ERROR);
+      LM_ERR("ERROR: error initializing structures. Errorcode=%d\n",INIT_ERROR);
       return INIT_ERROR;
    }
 
@@ -2452,7 +2462,7 @@ free_xcoder_resources(char * callID)
 	      if (connections[i].s != TERMINATED && connections[i].s != EMPTY
 	            && (strcmp(connections[i].call_id, callID) == 0 || strcmp(connections[i].b2b_client_callID, callID) == 0))
 	      {
-	         LM_INFO("Freeing resources. Connection : %d | conn_state=%d | call_id=%s\n", connections[i].id, connections[i].s,callID);
+	         LM_INFO("Freeing resources. b2bcallid=%d | conn_state=%d | call_id=%s\n", connections[i].id, connections[i].s,callID);
 
 	         if (connections[i].s == INITIALIZED || connections[i].s == PENDING)
 	         {
@@ -2461,7 +2471,7 @@ free_xcoder_resources(char * callID)
 	         }
 	         else
 	         {
-	            LM_ERR("Wrong connection state. Conn id : %d | Conn state : %d | call_id=%s\n", connections[i].id, connections[i].s,callID);
+	            LM_ERR("Wrong connection state. b2bcallid=%d |conn_state : %d | call_id=%s\n", connections[i].id, connections[i].s,callID);
 	         }
 	         break;
 	      }
@@ -2486,8 +2496,7 @@ int
 add_b2b_callID(char * orig_callID, char * b2b_callID, char * b2b_server_callID, char * b2b_key, char * original_tag,
       char * b2b_generated_tag)
 {
-   LM_INFO(
-         "Adding b2b call id. Original call ID : %s | b2b call id : %s | b2b server id : %s | b2b_key %s | original_tag=%s | b2b_generated_tag=%s\n",
+   LM_NOTICE("Adding b2b call id. Original call ID=%s | b2b gen_call id=%s | b2b server id=%s | b2b_key=%s | original_tag=%s | b2b_generated_tag=%s\n",
          orig_callID, b2b_callID, b2b_server_callID, b2b_key, original_tag, b2b_generated_tag);
    int i = 0;
    int count = 0; //Count the number of matches
@@ -2497,7 +2506,7 @@ add_b2b_callID(char * orig_callID, char * b2b_callID, char * b2b_server_callID, 
       {
          if (count == 0)
          {
-            LM_INFO("Found connection. Call id : %s\n", connections[i].call_id);
+            LM_INFO("Found connection. b2bcallid=%d | call_id=%s\n", connections[i].id,connections[i].call_id);
 
             bzero(connections[i].b2b_client_callID, 128);
             bzero(connections[i].b2b_client_serverID, 128);
@@ -2513,7 +2522,7 @@ add_b2b_callID(char * orig_callID, char * b2b_callID, char * b2b_server_callID, 
          }
          else
          {
-            LM_ERR("ERROR: Found more than one connection with the same call-ID. Conn id %d | conn_state=%d | Conn callid %s | Error code=%d\n",connections[i].id,connections[i].s,connections[i].call_id,DUPLICATE_CLIENT);
+            LM_ERR("ERROR: Found more than one connection with the same call_iD. b2bcallid=%d | conn_state=%d | call_id=%s | Errorcode=%d\n",connections[i].id,connections[i].s,connections[i].call_id,DUPLICATE_CLIENT);
             return DUPLICATE_CLIENT;
          }
          count++;
@@ -2522,7 +2531,7 @@ add_b2b_callID(char * orig_callID, char * b2b_callID, char * b2b_server_callID, 
          {
             if ((strcmp(connections[i].clients[l].tag, original_tag) == 0))
             {
-               LM_INFO("Found client. client_id=%d\n",connections[i].clients[l].id);
+               LM_NOTICE("Found client. client_id=%d\n",connections[i].clients[l].id);
                sprintf(connections[i].clients[l].b2b_tag, b2b_generated_tag);
             }
          }
@@ -2530,7 +2539,7 @@ add_b2b_callID(char * orig_callID, char * b2b_callID, char * b2b_server_callID, 
    }
    if (count == 0)
    {
-      LM_ERR("ERROR: No connection found. call_id=%s | b2b_call_id=%s | Error code=%d\n",orig_callID,b2b_callID,INIT_ERROR);
+      LM_ERR("ERROR: No connection found. call_id=%s | b2b_call_id=%s | Errorcode=%d\n",orig_callID,b2b_callID,INIT_ERROR);
       return INIT_ERROR;
    }
 
@@ -2572,40 +2581,40 @@ parse_codecs(char * message)
       {
          if (strcmp(param_names[j], param_name) == 0) // Compare parameter name with param_names array
          {
-            LM_DBG("Index %d. Param : %s | Value : %s\n", j, param_name, value);
+            LM_INFO("Index %d. Param : %s | Value : %s", j, param_name, value);
             switch (j)
             {
                case 0: // First parameter is status
                   if (strcmp(value, "OK") != 0)
                   {
-                     LM_ERR("ERROR. Wrong status value. Message : %s | Error code=%d\n",message,PARSER_ERROR);
+                     LM_ERR("ERROR. Wrong status value. Message : %s | Errorcode=%d\n",message,PARSER_ERROR);
                      return PARSER_ERROR;
                   }
                   else
                      status = OK;
 
-                  LM_DBG("Status = %s\n", value);
+                  LM_INFO("Status = %s\n", value);
                   break;
                case 1: // Second parameter is codec name
                   codec_index++;
-                  LM_DBG("codec_name = %s. Index %d\n", value, codec_index);
+                  LM_INFO("codec_name = %s. Index %d\n", value, codec_index);
                   sprintf(codecs[codec_index].name, "%s", value);
                   codecs[codec_index].is_empty = 1;
                   break;
                case 2: // Third parameter is codec sdp name
-                  LM_DBG("codec_sdpname = %s\n", value);
+                  LM_INFO("codec_sdpname = %s\n", value);
                   sprintf(codecs[codec_index].sdpname, "%s", value);
                   break;
                case 3: //Fourth parameter is payload
-                  LM_DBG("codec_payload = %s\n", value);
+                  LM_INFO("codec_payload = %s\n", value);
                   codecs[codec_index].payload = atoi(value);
                   break;
                case 4: //Fifth parameter is codec frequency
-                  LM_DBG("codec_frequency = %s\n", value);
+                  LM_INFO("codec_frequency = %s\n", value);
                   codecs[codec_index].frequency = atoi(value);
                   break;
                case 5: //Sixth parameter is codec fmtp
-                  LM_DBG("codec_fmtp = %s\n", value);
+                  LM_INFO("codec_fmtp = %s\n", value);
                   sprintf(codecs[codec_index].fmtp, "%s", value);
                   break;
                default:
@@ -2615,7 +2624,7 @@ parse_codecs(char * message)
 
          }
       }
-      LM_DBG("Param : %s | Value : %s\n\n", param_name, value);
+      LM_INFO("Param : %s | Value : %s\n\n", param_name, value);
 
       move_to_end(message, &i); // Move to end of line
    }
@@ -2663,11 +2672,11 @@ send_remove_to_xcoder(conn * connection)
    sprintf(buffer_send, "xcoder/1.0\r\nmsg_type=command\r\nmsg_value=remove\r\nmsg_count=%d\r\nb2b_call_id=%d\r\n<EOM>\r\n", message_number,
          connection->id); // Command to send to xcoder
 
-   status = talk_to_xcoder(buffer_send, buffer_recv, message_number);
+   status = talk_to_xcoder(buffer_send,message_number,buffer_recv);
 
    if (status != OK)
    {
-      LM_ERR("Error interacting with xcoder. Conn id %d | Error code=%d\n",connection->id,status);
+      LM_ERR("Error interacting with xcoder. b2bcallid=%d | Errorcode=%d\n",connection->id,status);
       return status;
    }
 
@@ -2689,7 +2698,7 @@ parse_inDialog_200OK(struct sip_msg *msg, char ** sdp_origin, conn * connection,
    get_client(connection, cli, &cli_dst); // Get destination client to insert the chosen payload
    if (cli_dst == NULL)
    {
-      LM_ERR("ERROR: No destination client encountered. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Error code=%d\n"
+      LM_ERR("ERROR: No destination client encountered. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | Errorcode=%d\n"
     		  ,connection->id,connection->s,connection->call_id,cli->id,cli->s,PARSER_ERROR);
       return PARSER_ERROR;
    }
@@ -2703,27 +2712,35 @@ parse_inDialog_200OK(struct sip_msg *msg, char ** sdp_origin, conn * connection,
 
    if (cli_dst->s == TO_HOLD)
    {
-      LM_INFO("Put on hold\n");
+      LM_NOTICE("Put call on hold. b2bcallid=%d | src_client_id=%d | dst_client_id=%d\n",connection->id,cli->id,cli_dst->id);
+      LM_INFO("Put call on hold. conn_state=%d | src_client_state=%d | src_client_tag=%s | dst_client_state=%d | dst_client_tag=%s\n",
+    		  connection->s,cli->s,cli->tag,cli_dst->s,cli_dst->tag);
       cli_dst->s = PENDING_HOLD;
       status = parse_sdp_b2b(msg, sdp_origin, connection, cli);
       cli->s = original_state; // Put back the original state
    }
    else if (cli_dst->s == OFF_HOLD)
    {
-      LM_INFO("Put off hold\n");
+      LM_NOTICE("Put off hold.b2bcallid=%d | src_cli_id=%d | dst_cli_id=%d\n",connection->id,cli->id,cli_dst->id);
+      LM_INFO("Put off hold. conn_state=%d | src_client_state=%d | src_client_tag=%s | dst_client_state=%d | dst_client_tag=%s\n",
+    		  connection->s,cli->s,cli->tag,cli_dst->s,cli_dst->tag);
       cli_dst->s = PENDING_OFF_HOLD;
       status = parse_sdp_b2b(msg, sdp_origin, connection, cli);
       cli->s = original_state; // Put back the original state
    }
    else if (cli_dst->s == PENDING_INVITE && cli->s == EARLY_MEDIA_C)
    {
-      LM_INFO("Process 200OK after early media\n");
+      LM_NOTICE("Process 200OK after early media.b2bcallid=%d | src_client_id=%d | dst_client_id=%d\n",connection->id,cli->id,cli_dst->id);
+      LM_INFO("Process 200OK after early media. conn_state=%d | src_client_state=%d | src_client_tag=%s | dst_client_state=%d | dst_client_tag=%s\n",
+    		  connection->s,cli->s,cli->tag,cli_dst->s,cli_dst->tag);
       status = parse_sdp_b2b(msg, sdp_origin, connection, cli);
       cli->s = PENDING_OFF_EARLY_MEDIA_C; // Put back the original state
    }
    else if (cli_dst->s == PENDING_INVITE)
    {
-      LM_INFO("Parsing 200OK after reinvite in 200OK\n");
+      LM_NOTICE("Parsing 200OK after reinvite in 200OK.b2bcallid=%d | src_client_id=%d | dst_client_id=%d\n",connection->id,cli->id,cli_dst->id);
+      LM_INFO("Parsing 200OK after reinvite in 200OK. conn_state=%d | src_client_state=%d | src_client_tag=%s | dst_client_state=%d | dst_client_tag=%s\n",
+    		  connection->s,cli->s,cli->tag,cli_dst->s,cli_dst->tag);
       status = parse_sdp_b2b(msg, sdp_origin, connection, cli);
       cli->s = PENDING_200OK;
    }
@@ -2741,7 +2758,7 @@ parse_inDialog_200OK(struct sip_msg *msg, char ** sdp_origin, conn * connection,
 
    if (status != OK)
    {
-      LM_ERR("ERROR: Error parsing sip message. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Error code=%d\n",
+      LM_ERR("ERROR: Error parsing sip message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | Errorcode=%d\n",
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status);
       free_ports_client(cli_dst);
       free_ports_client(cli);
@@ -2776,22 +2793,39 @@ parse_183(struct sip_msg *msg)
    struct to_body *pfrom; //Structure contFrom header
    struct to_body *pTo;
    struct cseq_body * cseq;
+   struct sip_uri * uri=NULL;
+   struct hdr_field * user_agent=NULL;
+
+   //Remove \r and \n from sip message
+
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+   LM_INFO("Received message : [%s]\n", msg_copy);
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
-      LM_ERR("ERROR: Error parsing headers. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Error parsing headers. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       return PARSER_ERROR;
    }
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Bad Header. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       return PARSER_ERROR;
    }
 
    pfrom = get_from(msg); //Get structure containing From header
    pTo = get_to(msg);
    cseq = get_cseq(msg);
+   uri = parse_to_uri(msg);
+
+   //Separately parse User-Agent header because is not a mandatory header in a sip message
+   if (parse_headers(msg, HDR_USERAGENT_F, 0) != 0)
+   {
+      LM_INFO("User-Agent header is not present in sip message\n");
+      user_agent = msg->user_agent;
+   }
 
    char from_tag[128];
    char to_tag[128];
@@ -2801,6 +2835,8 @@ parse_183(struct sip_msg *msg)
    char src_ip[25];
    char cseq_copy[128];
    char cseq_conn_copy[128];
+   char user_name[128];
+   char user_agent_str[128];
    bzero(from_tag, 128);
    bzero(to_tag, 128);
    bzero(callID, 128);
@@ -2808,8 +2844,14 @@ parse_183(struct sip_msg *msg)
    bzero(src_ip, 25);
    bzero(cseq_copy, 128);
    bzero(cseq_conn_copy, 128);
+   bzero(user_name,128);
+   bzero(user_agent_str,128);
    sprintf(src_ip, src_ipP);
    sprintf(cseq_copy, cseq_call); // This string will be copied because strtok_r can change this string.
+   if(uri!=NULL)
+	   snprintf(user_name,uri->user.len+1,uri->user.s);
+   if(user_agent!=NULL)
+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
 
    char * method; // Needed for strtok_r
    char * number;
@@ -2820,19 +2862,15 @@ parse_183(struct sip_msg *msg)
    snprintf(to_tag, pTo->tag_value.len + 1, pTo->tag_value.s);
    sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 
-   LM_INFO("From_tag : %s\n", from_tag);
-   LM_INFO("Src ip : %s\n", src_ip);
-   LM_INFO("CallID : %s\n", callID);
-   LM_INFO("to tag : %s\n", to_tag);
-   LM_INFO("Cseq : %s\n", cseq_call);
-   LM_INFO("Body : %s\n", message);
+   LM_INFO("Incoming 183 message. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | cseq=%s | username=%s\n",
+   		   callID,src_ip,from_tag,to_tag,cseq_call,user_name);
 
    for (i = 0; i < MAX_CONNECTIONS; i++) // Loop through the connections array
    {
       if (connections[i].s != TERMINATED && connections[i].s != EMPTY && connections[i].s != REFER_TO
             && ((strcmp(connections[i].call_id, callID) == 0) || (strcmp(connections[i].b2b_client_callID, callID) == 0)))
       {
-         LM_INFO("Found connection. Id %d | Previous cseq=%s | State %d\n", connections[i].id, connections[i].cseq, connections[i].s);
+         LM_INFO("Found connection. b2bcallid=%d | previous_cseq=%s | conn_state=%d\n", connections[i].id, connections[i].cseq, connections[i].s);
          sprintf(cseq_conn_copy, connections[i].cseq);
 
          char * method_previous; // Needed for strtok_r
@@ -2847,32 +2885,36 @@ parse_183(struct sip_msg *msg)
             { //Find an empty client
                if (connections[i].clients[c].is_empty == 0)
                {
-                  LM_INFO("Found empty client. Position %d\n", c);
+                  LM_INFO("Found empty client. b2bcallid=%d | client_id%d\n", connections[i].id,c);
                   char * caller_src_ip = connections[i].clients[0].src_ip; //Retrieve caller source IP
 
                   connections[i].clients[c].is_empty = 1;
                   connection = &(connections[i]);
                   cli = &(connections[i].clients[c]);
+                  clean_client(cli);
                   char id[4];
 
                   sprintf(id, "%d%d", i, c); // Create id based on connections and clients indexes
                   cli->id = atoi(id);
                   sprintf(connection->cseq, cseq_call);
                   sprintf(cli->src_ip, src_ip);
+                  sprintf(cli->user_name,user_name);
+                  sprintf(connection->clients[0].user_agent,user_agent_str);
                   sprintf(cli->dst_ip, caller_src_ip);
                   sprintf(cli->b2b_tag, connections[i].b2b_client_serverID); // Put b2b_client_serverID, this key will be used by opensips to identify second client.
                   sprintf(cli->tag, to_tag);
                   cli->s = PENDING_EARLY_MEDIA_C;
                   connection->s = PENDING_EARLY_MEDIA;
                   proceed = 0;
-                  LM_INFO("Created Client. Id : %d | IP : %s | tag=%s\n", cli->id, cli->src_ip, cli->tag);
+                  LM_NOTICE("Matched client to call.b2bcallid=%d | client_id=%d | src_ip=%s | tag=%s | state=%d\n",
+                		  connections[i].id,cli->id, cli->src_ip, cli->tag, cli->s);
                }
             }
          }
          else
          {
-            LM_ERR("ERROR.This message requires a previous INVITE. ip %s | call id %s | Conn_id %d | Conn_call_id=%s | Conn_state %d | Conn_cseq=%s | Error code=%d\n",
-                  src_ip, callID, connections[i].id, connections[i].call_id, connections[i].s, connections[i].cseq,PARSER_ERROR);
+            LM_ERR("ERROR.This message requires a previous INVITE. b2bcallid=%d | message_call_id=%s | src_ip=%s | conn_call_id=%s | conn_state %d | conn_cseq=%s | Errorcode=%d\n",
+            		connections[i].id, callID, src_ip, connections[i].call_id, connections[i].s, connections[i].cseq,PARSER_ERROR);
             return PARSER_ERROR;
          }
       }
@@ -2880,7 +2922,7 @@ parse_183(struct sip_msg *msg)
 
    if (cli == NULL || connection == NULL)
    {
-      LM_ERR("ERROR:NO CONNECTION WAS FOUND. ip %s | call_id=%s | Error code=%d\n", src_ip, callID,NOT_FOUND);
+      LM_ERR("ERROR. No connection was found. ip=%s | call_id=%s | from_tag=%s | to_tag=%s | Errorcode=%d\n", src_ip, callID,from_tag,to_tag,NOT_FOUND);
       return NOT_FOUND;
    }
 
@@ -2888,8 +2930,8 @@ parse_183(struct sip_msg *msg)
 
    if (status != OK)
    {
-      LM_ERR("ERROR: Error parsing sip message. Conn id %d | conn_state=%d | Conn call id %s | client_id=%d | client state=%d | Error code=%d | message %s\n",
-    		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status,msg->buf);
+      LM_ERR("ERROR: Error parsing sip message. b2bcallid=%d | conn_state=%d | call id %s | client_id=%d | client state=%d | Errorcode=%d | message %s\n",
+    		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status,msg_copy);
       switch (status)
       {
          case XCODER_CMD_ERROR:
@@ -2916,7 +2958,7 @@ parse_183(struct sip_msg *msg)
    get_client(connection, cli, &caller); //Get destination client
    if (caller == NULL)
    {
-      LM_ERR("Error: Error retrieving destination client. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Error code=%d\n",
+      LM_ERR("Error: Error retrieving destination client. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | Errorcode=%d\n",
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,GENERAL_ERROR);
 
       send_remove_to_xcoder(connection);
@@ -2928,7 +2970,7 @@ parse_183(struct sip_msg *msg)
 
    if (status != OK)
    {
-      LM_ERR("ERROR: Error creating early media call. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Error code=%d\n",
+      LM_ERR("ERROR: Error creating early media call. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | Errorcode=%d\n",
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status);
 
       send_remove_to_xcoder(connection);
@@ -2999,26 +3041,27 @@ parse_200OK(struct sip_msg *msg)
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
-	   LM_ERR("ERROR: Error parsing headers. Error code=%d\n",PARSER_ERROR);
+	   LM_ERR("ERROR: Error parsing headers. Errorcode=%d\n",PARSER_ERROR);
 	   return PARSER_ERROR;
    }
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header. Error code=%d\n",PARSER_ERROR);
+      LM_ERR("ERROR: Bad Header. Errorcode=%d\n",PARSER_ERROR);
       return PARSER_ERROR;
    }
+
    pfrom = get_from(msg); //Get structure containing From header
    pTo = get_to(msg);
    cseq = get_cseq(msg);
-   uri = parse_from_uri(msg);
+   uri = parse_to_uri(msg);
 
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
    snprintf(msg_copy,msg->len+1,msg->buf);
    remove_newline_str(msg_copy);
-   LM_INFO("Message : [%s]\n", msg_copy);
+   LM_INFO("Message received: [%s]\n", msg_copy);
 
    //Separately parse User-Agent header because is not a mandatory header in a sip message
    if (parse_headers(msg, HDR_USERAGENT_F, 0) != 0)
@@ -3033,19 +3076,28 @@ parse_200OK(struct sip_msg *msg)
    char callID[128];
    char cseq_call[128];
    char * src_ipP = ip_addr2a(&msg->rcv.src_ip);
+   char user_name[128];
+   char user_agent_str[128];
    bzero(from_tag, 128);
    bzero(to_tag, 128);
    bzero(src_ip, 25);
    bzero(callID, 128);
    bzero(cseq_call, 64);
+   bzero(user_name,128);
+   bzero(user_agent_str,128);
    sprintf(src_ip, src_ipP);
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); //Get callID
    snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
    snprintf(to_tag, pTo->tag_value.len + 1, pTo->tag_value.s);
    sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 
-   LM_INFO("Parse 200OK. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | cseq=%s | user_name=%.*s\n",
-		   callID,src_ip,from_tag,to_tag,cseq_call,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+   if(uri!=NULL)
+	   snprintf(user_name,uri->user.len+1,uri->user.s);
+   if(user_agent!=NULL)
+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
+
+   LM_INFO("Parse 200OK. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | cseq=%s | username=%s\n",
+		   callID,src_ip,from_tag,to_tag,cseq_call,user_name);
 
    char copy[64];
    bzero(copy, 64);
@@ -3080,7 +3132,7 @@ parse_200OK(struct sip_msg *msg)
                   get_client(&(connections[i]), &(connections[i].clients[c]), &cli_dst); //Get destination client
                   if (cli_dst == NULL)
                   {
-                	  LM_ERR("Error: Null destination client. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | user_name=%s | src_ip=%s | tag=%s | Error code=%d\n",
+                	  LM_ERR("Error: Null destination client. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | Errorcode=%d\n",
                 			  connections[i].id,connections[i].s,connections[i].call_id,connections[i].clients[c].id,connections[i].clients[c].s,connections[i].clients[c].user_name, connections[i].clients[c].src_ip, connections[i].clients[c].tag, GENERAL_ERROR);
                 	  send_remove_to_xcoder(&(connections[i]));
                 	  cancel_connection(&(connections[i]));
@@ -3091,20 +3143,21 @@ parse_200OK(struct sip_msg *msg)
                   cli = &(connections[i].clients[c]);
                   if (strcmp(method_previous, "INVITE") != 0 && cli_dst->s != TO_HOLD && cli_dst->s != OFF_HOLD && cli->s != PENDING_INVITE)
                   {
-                     LM_INFO("Wrong message flow, this response requires a previous invite request. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | user_name=%s | src_ip=%s | tag=%s | dst_cli_id=%d | dst_cli_state=%d | dst_cli_user_name=%s | dst_client_ip=%s | dst_client_tag=%s\n",
+                     LM_NOTICE("Wrong message flow, this response requires a previous invite request. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | dst_cli_id=%d | dst_cli_state=%d | dst_cli_username=%s | dst_client_ip=%s | dst_client_tag=%s\n",
                     		 connections[i].id,connections[i].s,connections[i].call_id,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, cli_dst->id,cli_dst->s,cli_dst->user_name, cli_dst->src_ip, cli_dst->tag);
                      return TO_DROP;
                   }
                   else if ((cli_dst->s == TO_HOLD || cli_dst->s == OFF_HOLD) && (strcmp(cli->tag, to_tag) == 0))
                   {
-                     LM_INFO("Parse in dialog 200OK in putting call on/off hold. b2bcallid=%d | client_id=%d | user_name=%s | cli_state=%d | cli_dst_state=%d\n",
+                	 LM_NOTICE("Parse in dialog 200OK. Putting call on/off hold. b2bcallid=%d | client_id=%d",connections[i].id, cli->id);
+                     LM_INFO("Parse in dialog 200OK.Putting call on/off hold. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
                     		 connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      return status;
                   }
                   else if (connections[i].s == REINVITE && cli_dst->s == PENDING_INVITE)
                   {
-                     LM_INFO("Parse in dialog 200OK. b2bcallid=%d | client_id=%d | user_name=%s\n",
+                     LM_NOTICE("Parse in dialog 200OK. b2bcallid=%d | client_id=%d | username=%s\n",
                     		 connections[i].id, cli->id,cli->user_name);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      return status;
@@ -3112,7 +3165,7 @@ parse_200OK(struct sip_msg *msg)
                   }
                   else if (connections[i].s == EARLY_MEDIA && cli_dst->s == PENDING_INVITE && (strcmp(cli->tag, to_tag) == 0))
                   {
-                     LM_INFO("Parse 200OK after early media. b2bcallid=%d | client_id=%d | user_name=%s\n",
+                     LM_NOTICE("Parse 200OK after early media. b2bcallid=%d | client_id=%d | username=%s\n",
                     		 connections[i].id, cli->id,cli->user_name);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      return status;
@@ -3135,7 +3188,7 @@ parse_200OK(struct sip_msg *msg)
 
    if (match_count > 0)
    {
-      LM_WARN("WARNING: ip %s, is already in one active connection. b2bcallid=%d | client_id=%d | user_name=%s\n",
+      LM_INFO("This ip [%s], is already active in one connection. b2bcallid=%d | client_id=%d | username=%s\n",
     		  src_ip,connections[i].id, cli->id,cli->user_name);
    }
 
@@ -3168,9 +3221,8 @@ parse_200OK(struct sip_msg *msg)
                cli->id = atoi(id);
                sprintf(connection->cseq, cseq_call);
                sprintf(cli->src_ip, src_ip);
-               snprintf(cli->user_name,pfrom->parsed_uri.user.len+1,pfrom->parsed_uri.user.s);
-			   if(user_agent!=NULL)
-               	   snprintf(connection->clients[0].user_agent,user_agent->body.len+1,user_agent->body.s);
+               sprintf(cli->user_name,user_name);
+               sprintf(connection->clients[0].user_agent,user_agent_str);
                sprintf(cli->dst_ip, caller_src_ip);
                sprintf(cli->b2b_tag, connections[i].b2b_client_serverID); // Put b2b_client_serverID, this key will be used by opensips to identify second client.
                sprintf(cli->tag, to_tag);
@@ -3178,7 +3230,7 @@ parse_200OK(struct sip_msg *msg)
                cli->s = TWO_OK;
 
                proceed = 0;
-               LM_INFO("Created Client. b2bcallid=%d | client_id=%d | user_name=%s | src_ip=%s | tag=%s\n", connection->id, cli->id, cli->user_name, cli->src_ip, cli->tag);
+               LM_NOTICE("Matched client to call: b2bcallid=%d | client_id=%d | username=%s | src_ip=%s | tag=%s\n", connection->id, cli->id, cli->user_name, cli->src_ip, cli->tag);
             }
          }
       }
@@ -3186,7 +3238,7 @@ parse_200OK(struct sip_msg *msg)
 
    if (cli == NULL || proceed == 1)
    {
-	   LM_ERR("ERROR:No client was found. ip=%s | call_id=%s | Error code=%d\n", src_ip, callID,NOT_FOUND);
+	   LM_ERR("ERROR:No client was found. ip=%s | call_id=%s | Errorcode=%d\n", src_ip, callID,NOT_FOUND);
 	   return NOT_FOUND;
    }
 
@@ -3200,7 +3252,7 @@ parse_200OK(struct sip_msg *msg)
 
    if (status != OK)
    {
-      LM_ERR("ERROR: Error parsing sip message. Conn id %d | conn_state=%d | Conn call id %s | client_id=%d | client state=%d | Error code=%d\n",
+      LM_ERR("ERROR: Error parsing sip message. Conn id %d | conn_state=%d | Conn call id %s | client_id=%d | client state=%d | Errorcode=%d\n",
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status);
 
       send_remove_to_xcoder(connection); //Xcoder will free ports for both clients.
@@ -3240,10 +3292,14 @@ parse_200OK(struct sip_msg *msg)
 static int
 parse_inDialog_invite(struct sip_msg *msg)
 {
-   LM_DBG("Parse invite. Check if is a generated invite or an indialog invite\n");
+   LM_INFO("Parse invite. Check if is a generated invite or an indialog invite\n");
    char * message = get_body(msg);
 
    //Remove \r and \n from sip message
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+   LM_INFO("Message : [%s]\n", msg_copy);
 
    conn * connection = NULL;
    client * cli_dst = NULL;
@@ -3254,16 +3310,11 @@ parse_inDialog_invite(struct sip_msg *msg)
 
    if (parse_sdp(msg) < 0)
    {
-      LM_ERR("Unable to parse sdp. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("Unable to parse sdp. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       clean_connection_v2(msg);
 
       return PARSER_ERROR;
    }
-
-   char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Message : [%s]\n", msg_copy);
 
    struct sdp_info* sdp;
    sdp = msg->sdp;
@@ -3280,9 +3331,9 @@ parse_inDialog_invite(struct sip_msg *msg)
    //print_sdp(sdp,3);
    /*while(streams!=NULL)
     {
-    LM_INFO("payloads : %.*s\n",streams->payloads.len,streams->payloads.s);
-    LM_INFO("port : %.*s\n",streams->port.len,streams->port.s);
-    LM_INFO("sendrecv_mode : %.*s\n",streams->sendrecv_mode.len,streams->sendrecv_mode.s);
+    LM_NOTICE("payloads : %.*s\n",streams->payloads.len,streams->payloads.s);
+    LM_NOTICE("port : %.*s\n",streams->port.len,streams->port.s);
+    LM_NOTICE("sendrecv_mode : %.*s\n",streams->sendrecv_mode.len,streams->sendrecv_mode.s);
 
     streams = streams->next;
     }*/
@@ -3294,13 +3345,13 @@ parse_inDialog_invite(struct sip_msg *msg)
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
-      LM_ERR("ERROR: Error parsing headers. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Error parsing headers. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       return PARSER_ERROR;
    }
 
    if (parse_from_header(msg) != 0) // Parse header FROM
    {
-      LM_ERR("ERROR: Bad From header. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Bad From header. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       clean_connection_v2(msg);
       return PARSER_ERROR;
    }
@@ -3326,8 +3377,8 @@ parse_inDialog_invite(struct sip_msg *msg)
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
    sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 
-   LM_INFO("Check if is an indialog invite. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s| cseq=%s | user_name=%.*s\n",
-   		   callID,conn_ip,from_tag, to_tag,cseq_call,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+   LM_NOTICE("Check if is an indialog invite. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | user_name=%.*s\n",
+   		   callID,conn_ip,from_tag, to_tag,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
 
    int exit = 0;
    int i = 0;
@@ -3336,21 +3387,21 @@ parse_inDialog_invite(struct sip_msg *msg)
       if (((connections[i].s != EMPTY) && (connections[i].s != TERMINATED))
             && ((strcmp(connections[i].call_id, callID) == 0) || (strcmp(connections[i].b2b_client_callID, callID) == 0))) //Find an empty connection
       {
-         LM_INFO("Connection found. b2bcallid=%d | call_id %s | conn_state=%d\n", connections[i].id, connections[i].call_id,connections[i].s);
+         LM_INFO("Connection found. b2bcallid=%d | call_id=%s | conn_state=%d\n", connections[i].id, connections[i].call_id,connections[i].s);
          int c = 0;
          for (c = 0; c < MAX_CLIENTS && exit == 0; c++) // Checks if all clients are empty
          {
-            LM_INFO("Check client. b2bcallid=%d | client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | user_name=%s\n",
+            LM_INFO("Check client. b2bcallid=%d | client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | username=%s\n",
             		connections[i].id,connections[i].clients[c].id, connections[i].clients[c].tag, connections[i].clients[c].b2b_tag, connections[i].clients[c].s, connections[i].clients[c].src_ip, connections[i].clients[c].user_name);
 
             if ((connections[i].s == ACTIVE || connections[i].s == REINVITE) && (strcmp(connections[i].clients[c].b2b_tag, from_tag) == 0)) //This is a b2b generated invite
             {
-               LM_INFO("Found client. b2bcallid=%d | client_id=%d | user_name=%s\n",connections[i].id,connections[i].clients[c].id,connections[i].clients[c].user_name);
+               LM_INFO("Found client. b2bcallid=%d | client_id=%d | username=%s\n",connections[i].id,connections[i].clients[c].id,connections[i].clients[c].user_name);
                cli = &(connections[i].clients[c]);
                get_client(&(connections[i]), cli, &cli_dst); //Get destination client
                if (cli_dst == NULL)
                {
-                  LM_ERR("Error: Null destination client. b2bcallid=%d | conn_state=%d | call_id=%s | src_client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | user_name=%s | Error code=%d\n",
+                  LM_ERR("Error: Null destination client. b2bcallid=%d | conn_state=%d | call_id=%s | src_client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | username=%s | Errorcode=%d\n",
                 		  connections[i].id,connections[i].s,connections[i].call_id,cli->id,cli->tag, cli->b2b_tag, cli->s, cli->src_ip, cli->user_name,GENERAL_ERROR);
                   return GENERAL_ERROR;
                }
@@ -3359,9 +3410,9 @@ parse_inDialog_invite(struct sip_msg *msg)
                 t_reply("302","Moved Temporarily");
                 */
 
-               LM_DBG("Found destination client. b2bcallid=%d | client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | user_name=%s\n",
+               LM_INFO("Found destination client. b2bcallid=%d | client_id=%d | tag=%s | b2b_tag=%s | state=%d | src_ip=%s | username=%s\n",
             		   connections[i].id,cli_dst->id, cli_dst->tag, cli_dst->b2b_tag, cli_dst->s, cli_dst->src_ip, cli_dst->user_name);
-               LM_INFO("Found destination client. b2bcallid=%d | client_id=%d | user_name=%s\n",connections[i].id,cli_dst->id,cli_dst->user_name);
+               LM_INFO("Found destination client. b2bcallid=%d | client_id=%d | username=%s\n",connections[i].id,cli_dst->id,cli_dst->user_name);
 
                callee_original_state = cli_dst->s;
                caller_original_state = cli->s;
@@ -3369,7 +3420,7 @@ parse_inDialog_invite(struct sip_msg *msg)
                connections[i].s = REINVITE;
                if ((strcmp(conn_ip, "0.0.0.0") == 0))
                {
-                  LM_INFO("Call to hold. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | user_name=%s\n",
+                  LM_NOTICE("Call to hold. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s\n",
                 		  connections[i].id,connections[i].s,connections[i].call_id,connections[i].clients[c].id,connections[i].clients[c].s,connections[i].clients[c].user_name);
                   connection = &(connections[i]);
                   sprintf(connection->cseq, cseq_call);
@@ -3380,7 +3431,7 @@ parse_inDialog_invite(struct sip_msg *msg)
                }
                else if (cli->s == ON_HOLD)
                {
-                  LM_INFO("Putting call off hold. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | user_name=%s\n",
+                  LM_NOTICE("Putting call off hold. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s\n",
                 		  connections[i].id,connections[i].s,connections[i].call_id,connections[i].clients[c].id,connections[i].clients[c].s,connections[i].clients[c].user_name);
                   connection = &(connections[i]);
                   sprintf(connection->cseq, cseq_call);
@@ -3391,7 +3442,7 @@ parse_inDialog_invite(struct sip_msg *msg)
                }
                else
                {
-                  LM_INFO("Parse in dialog invite. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | user_name=%s\n",
+                  LM_NOTICE("Parse in dialog invite. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s\n",
                 		  connections[i].id,connections[i].s,connections[i].call_id,connections[i].clients[c].id,connections[i].clients[c].s,connections[i].clients[c].user_name);
                   connection = &(connections[i]);
                   cli->s = INVITE_C;
@@ -3417,8 +3468,8 @@ parse_inDialog_invite(struct sip_msg *msg)
    if (status != OK)
    {
 
-	  LM_ERR("ERROR: Error parsing sip message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | src_ip=%s | user_name=%s | tag=%s | b2b_tag=%s | Error code=%d\n",
-    		  connections->id,connections->s,connections->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,cli->tag,cli->b2b_tag,status);
+	  LM_ERR("ERROR: Error parsing sip message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | src_ip=%s | username=%s | tag=%s | b2b_tag=%s | Errorcode=%d | message [%s]\n",
+    		  connections->id,connections->s,connections->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,cli->tag,cli->b2b_tag,status, msg_copy);
       free_ports_client(cli);
       cli->s = caller_original_state;
       cli_dst->s = callee_original_state;
@@ -3444,35 +3495,36 @@ static int
 parse_invite(struct sip_msg *msg)
 {
 
-   LM_DBG("Parsing invite\n");
+   LM_INFO("Parsing invite\n");
    char * message = get_body(msg); //Retrieves the body section of the sip message
    int i = 0;
    conn * connection = NULL;
    int status = OK;
    struct to_body *pfrom=NULL; //Structure From header
    struct cseq_body * cseq=NULL;
-   struct sip_uri * uri=NULL;
+   struct sip_uri * from_uri=NULL;
+   struct sip_uri * to_uri=NULL;
    struct hdr_field * user_agent=NULL;
-
-   if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
-   {
-      LM_ERR("ERROR: Error parsing headers. Error code=%d\n",PARSE_ERROR);
-      return PARSE_ERROR;
-   }
-
-   // Parse header FROM
-   if (parse_from_header(msg) != 0)
-   {
-      LM_ERR("ERROR: Bad From header. Error code=%d\n",PARSE_ERROR);
-      return PARSE_ERROR;
-   }
 
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
    snprintf(msg_copy,msg->len+1,msg->buf);
    remove_newline_str(msg_copy);
-   LM_INFO("Message : [%s]\n", msg_copy);
+   LM_INFO("Received message : [%s]\n", msg_copy);
+
+   if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
+   {
+      LM_ERR("ERROR: Error parsing headers. Errorcode=%d\n",PARSE_ERROR);
+      return PARSE_ERROR;
+   }
+
+   // Parse header FROM
+   if (parse_from_header(msg) != 0)
+   {
+      LM_ERR("ERROR: Bad From header. Errorcode=%d\n",PARSE_ERROR);
+      return PARSE_ERROR;
+   }
 
    //Separately parse User-Agent header because is not a mandatory header in a sip message
    if (parse_headers(msg, HDR_USERAGENT_F, 0) != 0)
@@ -3483,25 +3535,44 @@ parse_invite(struct sip_msg *msg)
 
    pfrom = get_from(msg); //Get structure containing parsed From header
    cseq = get_cseq(msg);  //Get structure containing parsed Cseq header
-   uri = parse_from_uri(msg);
+   from_uri = parse_from_uri(msg);
+   to_uri = parse_to_uri(msg);
 
    char * src_ip_from_msg = ip_addr2a(&msg->rcv.src_ip);
    char src_ip[25];
    char callID[128];
    char tag[128];
    char cseq_call[128];
+   char user_name[128];
+   char user_agent_str[128];
+   char dst_host[32];
+   char dst_user_name[128];
 
    bzero(src_ip, 25);
    bzero(callID, 128);
    bzero(tag, 128);
    bzero(cseq_call, 64);
+   bzero(user_name,128);
+   bzero(user_agent_str,128);
+   bzero(dst_host,32);
+   bzero(dst_user_name,128);
    sprintf(src_ip, src_ip_from_msg);
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
    snprintf(tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
    sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 
-   LM_INFO("Parsing Invite. call_id=%s | src_ip=%s | from_tag=%s | cseq=%s | user_name=%.*s\n",
-		   callID,src_ip,tag,cseq_call,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+   if(from_uri!=NULL)
+	   snprintf(user_name,from_uri->user.len+1,from_uri->user.s);
+   if(user_agent!=NULL)
+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
+   if(to_uri!=NULL)
+   {
+	   snprintf(dst_host,to_uri->host.len+1,to_uri->host.s);
+	   snprintf(dst_user_name,to_uri->user.len+1,to_uri->user.s);
+   }
+
+   LM_NOTICE("Incoming call. call_id=%s | src_ip=%s | from_tag=%s | username=%s\n",
+		   callID,src_ip,tag,user_name);
 
    ////////////////////// Checks if client existes //////////////////
 
@@ -3526,7 +3597,7 @@ parse_invite(struct sip_msg *msg)
                 }
                 else*/if ((strcmp(connections[i].cseq, cseq_call) == 0) && (strcmp(connections[i].call_id, callID) == 0)) //check if is a repetive invite
                {
-                  LM_INFO("Repetive invite from %s. dropping message. call_id=%s | from_tag=%s | cseq=%s\n", src_ip,callID,tag,cseq_call);
+                  LM_NOTICE("Repetive invite from %s. dropping message. call_id=%s | from_tag=%s | cseq=%s\n", src_ip,callID,tag,cseq_call);
                   return TO_DROP;
                }
             }
@@ -3539,22 +3610,21 @@ parse_invite(struct sip_msg *msg)
    status = get_conn_session(&session_id);
    if (status != OK)
    {
-      LM_INFO("ERROR. Error finding empty connection slot. Errorcode %d.\n", status);
+      LM_ERR("ERROR. Error finding empty connection slot. Errorcode %d.\n", status);
       return INIT_ERROR;
    }
 
    connection = &(connections[session_id]);
    connection->id = session_id;
-   LM_DBG("Seting id to connection. Id = %d\n", i);
+   LM_INFO("Seting id to connection. Id = %d\n", i);
    char id[4];
    sprintf(id, "%d%d", session_id, 0);
    clean_client(&(connection->clients[0]));	// Cleaning client structure
    connection->clients[0].id = atoi(id);
    sprintf(connection->cseq, cseq_call);
    sprintf(connection->clients[0].src_ip, src_ip);
-   snprintf(connection->clients[0].user_name,pfrom->parsed_uri.user.len+1,pfrom->parsed_uri.user.s);
-   if(user_agent!=NULL)
-	   snprintf(connection->clients[0].user_agent,user_agent->body.len+1,user_agent->body.s);
+   sprintf(connection->clients[0].user_name,user_name);
+   sprintf(connection->clients[0].user_agent,user_agent_str);
    sprintf(connection->clients[0].tag, tag);
    connection->clients[0].is_empty = 1;
    connection->clients[0].s = INVITE_C;
@@ -3568,8 +3638,8 @@ parse_invite(struct sip_msg *msg)
       return INIT_ERROR;
    }
 
-   LM_INFO("Created client and proceeding to parse sip message. b2bcallid=%d | client_id=%d | user_name=%s\n",
-		   connection->id, connection->clients[0].id,connection->clients[0].user_name);
+   LM_NOTICE("Accepting incomming call. b2bcallid=%d | client_id=%d | call_id=%s | username=%s\n",
+		   connection->id, connection->clients[0].id,connection->call_id,connection->clients[0].user_name);
 
    status = parse_sdp_b2b(msg, &message, connection, &(connection->clients[0]));
 
@@ -3583,7 +3653,7 @@ parse_invite(struct sip_msg *msg)
 
    if (status != OK)
    {
-      LM_ERR("ERROR: Error parsing sip message. Error code=%d\n",status);
+      LM_ERR("ERROR: Error parsing sip message. Errorcode=%d\n",status);
       free_ports_client(&(connection->clients[0]));
       clean_connection(connection);
       switch (status)
@@ -3610,8 +3680,10 @@ parse_invite(struct sip_msg *msg)
    connection->clients[0].s = PENDING_INVITE;
    connection->s = PENDING;
 
-   LM_INFO("Successfully parsed invite. conn_state %d | b2bcallid=%d | client_id=%d | client_state=%d | user_name=%s | src_ip=%s | tag=%s\n"
+   LM_NOTICE("Successfully accepted incoming call. b2bcallid=%d | client_id=%d\n",connection->id,connection->clients[0].id);
+   LM_INFO("Successfully accepted incoming call. conn_state %d | b2bcallid=%d | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s\n"
 		   ,connection->s,connection->id, connection->clients[0].id,connection->clients[0].s,connection->clients[0].user_name,connection->clients[0].src_ip,connection->clients[0].tag);
+   LM_NOTICE("Sending invite to host=%s | username=%s | b2bcallid=%d\n",dst_host,dst_user_name,connection->id);
    return OK;
 }
 
@@ -3624,19 +3696,25 @@ parse_invite(struct sip_msg *msg)
 static int
 general_failure(struct sip_msg* msg)
 {
+	LM_INFO("Parse failure\n");
+   //Remove \r and \n from sip message
+
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
    char * src_ip = ip_addr2a(&msg->rcv.src_ip);
 
    struct to_body *pfrom; //Structure contFrom header
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F | HDR_CALLID_F, 0) != 0)
    {
-      LM_ERR("ERROR: Error parsing headers.\n");
+      LM_ERR("ERROR: Error parsing headers. message [%s]\n",msg_copy);
       return INIT_ERROR;
    }
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header\n");
+      LM_ERR("ERROR: Bad Header. message [%s]\n",msg_copy);
       return INIT_ERROR;
    }
    pfrom = get_from(msg); //Get structure containing parsed From header
@@ -3648,8 +3726,8 @@ general_failure(struct sip_msg* msg)
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); //Get call-id
    snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s); //Get from tag
 
-   LM_INFO("Received '%.*s %.*s' from ip %s | call_id=%s\n",
-         msg->first_line.u.reply.status.len, msg->first_line.u.reply.status.s, msg->first_line.u.reply.reason.len, msg->first_line.u.reply.reason.s, src_ip,callID);
+   LM_NOTICE("Received '%.*s %.*s' from ip %s | call_id=%s | tag=%s\n",
+         msg->first_line.u.reply.status.len, msg->first_line.u.reply.status.s, msg->first_line.u.reply.reason.len, msg->first_line.u.reply.reason.s, src_ip,callID,from_tag);
 
    int i = 0;
    for (i = 0; i < MAX_CONNECTIONS; i++) //Loop to find right connection
@@ -3661,45 +3739,45 @@ general_failure(struct sip_msg* msg)
          int c = 0;
          for (c = 0; c < MAX_CLIENTS; c++) // Checks if all clients are empty
          {
-            LM_INFO("Tag : %s\n", from_tag);
-            LM_INFO("id : %d | tag : %s | b2b_tag : %s | state : %d\n\n",
-                  connections[i].clients[c].id, connections[i].clients[c].tag, connections[i].clients[c].b2b_tag, connections[i].clients[c].s);
+            LM_INFO("b2bcallid=%d | client_id=%d | tag=%s | b2b_tag=%s | state=%d\n\n",
+            		connections[i].id,connections[i].clients[c].id, connections[i].clients[c].tag, connections[i].clients[c].b2b_tag, connections[i].clients[c].s);
 
             if ((strcmp(connections[i].clients[c].tag, from_tag) == 0) || (strcmp(connections[i].clients[c].b2b_tag, from_tag) == 0)) //This is a b2b generated invite
             {
                if (connections[i].clients[c].s == TO_HOLD || connections[i].clients[c].s == PENDING_HOLD)
                {
-                  LM_INFO("Failed to put call on hold\n");
+                  LM_NOTICE("Failed to put call on hold. b2bcallid=%d\n",connections[i].id);
                   connections[i].clients[c].s = ACTIVE;
                   connections[i].s = ACTIVE;
                }
                else if (connections[i].clients[c].s == ON_HOLD || connections[i].clients[c].s == OFF_HOLD
                      || connections[i].clients[c].s == PENDING_OFF_HOLD)
                {
-                  LM_INFO("Failed to put call off hold\n");
+                  LM_NOTICE("Failed to put call off hold. b2bcallid=%d\n",connections[i].id);
                   connections[i].clients[c].s = ON_HOLD;
                   connections[i].s = ACTIVE;
                }
                else if (connections[i].s == PENDING)
                {
-                  LM_INFO("Failed to create call.Cleaning connection %d\n", connections[i].id);
+                  LM_NOTICE("Failed to create call.Cleaning connection b2bcallid=%d\n", connections[i].id);
                   free_ports_client(&(connections[i].clients[c]));
                   clean_connection(&(connections[i]));
                }
                else if (connections[i].s == REINVITE)
                {
                   free_ports_client(&(connections[i].clients[c]));
-                  LM_INFO("Failed to reinvite message\n");
+                  LM_NOTICE("Failed to reinvite message.b2bcallid=%d\n", connections[i].id);
                   connections[i].s = ACTIVE;
                }
                else if (connections[i].s == PENDING_EARLY_MEDIA)
                {
-                  LM_INFO("Failed to create early media\n");
+                  LM_NOTICE("Failed to create early media. b2bcallid=%d\n", connections[i].id);
                   free_ports_client(&(connections[i].clients[c]));
                   cancel_connection(&(connections[i]));
                }
                i = MAX_CONNECTIONS;
                c = MAX_CLIENTS;
+               LM_INFO("b2bcallid=%d | conn_state=%d | client_id=%d | client_state=%d\n",connections[i].id,connections[i].s,connections[i].clients[c].id,connections[i].clients[c].s);
                break;
             }
          }
@@ -3728,17 +3806,22 @@ parse_refer(struct sip_msg* msg)
    char callID[128];
    bzero(callID, 128);
 
+   //Remove \r and \n from sip message
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+
    ////////////////// Parse headers //////////////
 
    if (parse_headers(msg, HDR_REFER_TO_F, 0) != 0)
    {
-      LM_ERR("ERROR: Error parsing headers. Error code=%d | message %s\n",INIT_ERROR,msg->buf);
+      LM_ERR("ERROR: Error parsing headers. Errorcode=%d | message %s\n",INIT_ERROR,msg_copy);
       return INIT_ERROR;
    }
 
    if (parse_refer_to_header(msg) != 0)
    {
-      LM_ERR("ERROR: Error parsing refer_to header. Error code=%d | message %s\n",INIT_ERROR,msg->buf);
+      LM_ERR("ERROR: Error parsing refer_to header. Errorcode=%d | message %s\n",INIT_ERROR,msg_copy);
       return INIT_ERROR;
    }
 
@@ -3760,7 +3843,7 @@ parse_refer(struct sip_msg* msg)
    }
    else
    {
-      LM_ERR("Error retrieving destination ip. Error code=%d | message %s\n",INIT_ERROR,msg->buf);
+      LM_ERR("Error retrieving destination ip. Errorcode=%d | message %s\n",INIT_ERROR,msg_copy);
       return INIT_ERROR;
    }
 
@@ -3774,7 +3857,7 @@ parse_refer(struct sip_msg* msg)
             && (strcmp(connections[i].call_id, callID) == 0 || strcmp(connections[i].b2b_client_callID, callID) == 0))
       {
 
-         LM_INFO("Found connection to transfer. Conn id %d | conn_state=%d.\n", connections[i].id, connections[i].s);
+         LM_NOTICE("Found connection to transfer. b2bcallid=%d | conn_state=%d.\n", connections[i].id, connections[i].s);
          break;
       }
    }
@@ -3800,18 +3883,18 @@ create_socket_structures(void)
       int flags;
       if ((fd_socket_list[i].fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
       {
-         LM_ERR("ERROR, Unable to create connection to xcoder. Error code=%d\n",INIT_ERROR);
+         LM_ERR("ERROR, Unable to create connection to xcoder. Errorcode=%d\n",INIT_ERROR);
          return INIT_ERROR;
       }
 
       memset((char *) &peeraddr_un, 0, sizeof(peeraddr_un));
 
       peeraddr_un.sun_family = AF_UNIX;
-      LM_DBG("Connecting to %s\n", XCODER_UNIX_SOCK_PATH);
+      LM_INFO("Connecting to %s\n", XCODER_UNIX_SOCK_PATH);
       strncpy(peeraddr_un.sun_path, XCODER_UNIX_SOCK_PATH, sizeof(peeraddr_un.sun_path)); // Connect to socket provided by xcoder
       if ((connect(fd_socket_list[i].fd, (struct sockaddr *) &peeraddr_un, sizeof(peeraddr_un))) == -1)
       {
-         LM_ERR("ERROR: Unable to connect to socket. Error code=%d\n",INIT_ERROR);
+         LM_ERR("ERROR: Unable to connect to socket. Errorcode=%d\n",INIT_ERROR);
          shutdown(fd_socket_list[i].fd, SHUT_RDWR);
          close(fd_socket_list[i].fd);
          fd_socket_list[i].fd = -1;
@@ -3839,9 +3922,14 @@ parse_bye(struct sip_msg* msg)
    LM_INFO("Parsing bye\n");
    struct to_body *pfrom; //Structure contFrom header
 
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+   LM_INFO("Received message : [%s]\n", msg_copy);
+
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header. Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Bad Header. Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       return PARSER_ERROR;
    }
    pfrom = get_from(msg); //Get structure containing parsed From header
@@ -3854,7 +3942,7 @@ parse_bye(struct sip_msg* msg)
    bzero(callID, 128);
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
 
-   LM_INFO("Information BYE. src_ip : %s | call_id=%s | tag : %s\n", src_ip, callID, tag);
+   LM_INFO("Bye message information. src_ip=%s | call_id=%s | from_tag=%s\n", src_ip, callID, tag);
 
    int i = 0;
    for (i = 0; i < MAX_CONNECTIONS; i++)
@@ -3862,7 +3950,8 @@ parse_bye(struct sip_msg* msg)
       if (connections[i].s != TERMINATED && connections[i].s != EMPTY
             && (strcmp(connections[i].call_id, callID) == 0 || strcmp(connections[i].b2b_client_callID, callID) == 0))
       {
-         LM_INFO("Cleaning Connection : %d | BYE src_ip = %s\n", connections[i].id, src_ip);
+    	 LM_NOTICE("Received bye. b2bcallid=%d | from_tag=%s | src_ip=%s | call_id=%s",connections[i].id,tag,src_ip,callID);
+         LM_INFO("Cleaning connection. b2bcallid=%d\n", connections[i].id);
          send_remove_to_xcoder(&(connections[i]));
          clean_connection(&(connections[i])); //Clean connetions that receives a bye
          break;
@@ -3870,8 +3959,7 @@ parse_bye(struct sip_msg* msg)
    }
    if (i == MAX_CONNECTIONS)
    {
-      LM_ERR("Error: no connection found for bye. Error code=%d\n",GENERAL_ERROR);
-      LM_DBG("Error, Message : %s\n",msg->buf);
+      LM_ERR("Error: no connection found for bye. Errorcode=%d\n",GENERAL_ERROR);
       return GENERAL_ERROR;
    }
 
@@ -3895,9 +3983,15 @@ parse_cancel(struct sip_msg* msg)
    LM_INFO("Parsing Cancel\n");
    struct to_body *pfrom; //Structure contFrom header
 
+   //Remove \r and \n from sip message
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+   LM_INFO("Received message : [%s]\n", msg_copy);
+
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header.Error code=%d | message %s\n",PARSER_ERROR,msg->buf);
+      LM_ERR("ERROR: Bad Header.Errorcode=%d | message %s\n",PARSER_ERROR,msg_copy);
       return PARSER_ERROR;
    }
    pfrom = get_from(msg); //Get structure containing parsed From header
@@ -3910,7 +4004,7 @@ parse_cancel(struct sip_msg* msg)
    bzero(callID, 128);
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
 
-   LM_INFO("Information CANCEL, src_ip : %s | tag : %s\n", src_ip, tag);
+   LM_INFO("Information CANCEL. call_id=%s | src_ip=%s | tag=%s\n", callID,src_ip, tag);
 
    int i = 0;
    for (i = 0; i < MAX_CONNECTIONS; i++)
@@ -3918,7 +4012,7 @@ parse_cancel(struct sip_msg* msg)
       if (connections[i].s != TERMINATED && connections[i].s != EMPTY
             && (strcmp(connections[i].call_id, callID) == 0 || strcmp(connections[i].b2b_client_callID, callID) == 0))
       {
-         LM_INFO("Canceling call. Connection : %d | conn_state=%d | src_ip = %s\n", connections[i].id, connections[i].s, src_ip);
+         LM_NOTICE("Canceling call. b2bcallid=%d | conn_state=%d | src_ip=%s\n", connections[i].id, connections[i].s, src_ip);
 
          if (connections[i].s == INITIALIZED || connections[i].s == PENDING)
          {
@@ -3942,7 +4036,7 @@ parse_cancel(struct sip_msg* msg)
          {
             send_remove_to_xcoder(&(connections[i]));
             cancel_connection(&(connections[i]));
-            LM_ERR("Wrong connection state to receive 'cancel'. Conn id : %d | Conn state : %d\n", connections[i].id, connections[i].s);
+            LM_ERR("Wrong connection state to receive 'cancel'. b2bcallid=%d | conn_state : %d\n", connections[i].id, connections[i].s);
          }
       }
    }
@@ -4048,13 +4142,13 @@ create_call(conn * connection, client * caller)
                int m = 0;
                for (m = 0; m < MAX_PAYLOADS; m++)
                {
-                  LM_INFO("Is_empty %d | Codec %s | Payload %s\n",
+                  LM_NOTICE("Is_empty %d | Codec %s | Payload %s\n",
                         caller->payloads[m].is_empty, caller->payloads[m].codec, caller->payloads[m].payload);
                }
 
-               LM_INFO(" caller->payloads[%d].payload : %s.\n", k, caller->payloads[k].payload);
-               LM_INFO(" caller->payloads[%d].attr_rtpmap_line : %s.\n", k, caller->payloads[k].attr_rtpmap_line);
-               LM_INFO(" caller->payloads[%d].attr_fmtp_line : %s.\n", k, caller->payloads[k].attr_fmtp_line);
+               LM_ERR("caller->payloads[%d].payload : %s.\n", k, caller->payloads[k].payload);
+               LM_ERR("caller->payloads[%d].attr_rtpmap_line : %s.\n", k, caller->payloads[k].attr_rtpmap_line);
+               LM_ERR("caller->payloads[%d].attr_fmtp_line : %s.\n", k, caller->payloads[k].attr_fmtp_line);
                return GENERAL_ERROR;
             }
          }
@@ -4098,12 +4192,12 @@ create_call(conn * connection, client * caller)
                int m = 0;
                for (m = 0; m < MAX_PAYLOADS; m++)
                {
-                  LM_INFO("Is_empty %d | Codec %s | Payload %s\n",
+                  LM_NOTICE("Is_empty %d | Codec %s | Payload %s\n",
                         callee->payloads[m].is_empty, callee->payloads[m].codec, callee->payloads[m].payload);
                }
-               LM_INFO(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].payload);
-               LM_INFO(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].attr_rtpmap_line);
-               LM_INFO(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].attr_fmtp_line);
+               LM_ERR(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].payload);
+               LM_ERR(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].attr_rtpmap_line);
+               LM_ERR(" caller->payloads[%d].payload : %s.\n", k, callee->payloads[k].attr_fmtp_line);
                return GENERAL_ERROR;
             }
          }
@@ -4128,9 +4222,6 @@ create_call(conn * connection, client * caller)
       sprintf(payload_dtmf_B, "%s", "126");
    }
 
-   LM_INFO("Codec A %s |Payload A : %s | DTMF payload %s\n", codec_A, payload_A, payload_dtmf_A);
-   LM_INFO("Codec B %s |Payload B : %s | DTMF payload %s\n", codec_B, payload_B, payload_dtmf_B);
-
    sprintf(msg_x.params[7].text, codec_A);
    sprintf(msg_x.params[8].text, payload_A);
    sprintf(msg_x.params[9].text, payload_dtmf_A);
@@ -4143,6 +4234,9 @@ create_call(conn * connection, client * caller)
    sprintf(msg_x.params[16].text, payload_dtmf_B);
    sprintf(msg_x.params[17].text, "%d", connection->id);
 
+   LM_NOTICE("Creating call: b2bcallid=%d | caller_id=%d | codec=%s | payload=%s | DTMF_payload=%s | callee_id=%d | codec=%s | payload=%s | DTMF_payload=%s",
+		   connection->id,caller->id,codec_A,payload_A,payload_dtmf_A,callee->id,codec_B,payload_B,payload_dtmf_B);
+
    //////////////////////////// Send message command to xcoder ///////////////////////////////
 
    char buf[XCODER_MAX_MSG_SIZE];
@@ -4151,23 +4245,21 @@ create_call(conn * connection, client * caller)
    char buffer_recv[XCODER_MAX_MSG_SIZE];
    bzero(buffer_recv, XCODER_MAX_MSG_SIZE);
 
-   LM_INFO("Conn id : %d\n", connection->id);
    xcoder_encode_msg((char *) buf, msg_x.id, (xcoder_param_t *) msg_x.params, msg_x.type);
-
-   status = talk_to_xcoder(buf, buffer_recv, message_number);
+   status = talk_to_xcoder(buf, message_number,buffer_recv );
 
    if (status != OK)
    {
-      LM_ERR("ERROR. Error interacting with xcoder. Conn id %d | conn_state=%d | Conn call_id=%s | Error code=%d\n",
-    		  connection->id,connection->s,connection->call_id,status);
+      LM_ERR("ERROR. Error interacting with xcoder. b2bcallid=%d | conn_state=%d | call_id=%s | caller_state=%d | callee_state=%d | Errorcode=%d\n",
+    		  connection->id,connection->s,connection->call_id,caller->s,callee->s,status);
       return status;
    }
 
    status = get_response_status(buffer_recv, connection);
    if (status != OK)
    {
-      LM_ERR("ERROR. Bad responde by xcoder. Conn id %d | conn_state=%d | Conn call_id=%s | Error code=%d\n",
-    		  connection->id,connection->s,connection->call_id,status);
+      LM_ERR("ERROR. Bad responde by xcoder. b2bcallid=%d | conn_state=%d | call_id=%s | caller_state=%d | callee_state=%d | Errorcode=%d\n",
+    		  connection->id,connection->s,connection->call_id,caller->s,callee->s,status);
       return status;
    }
 
@@ -4187,22 +4279,27 @@ parse_ACK(struct sip_msg* msg)
    LM_INFO("Parsing ACK\n");
    struct to_body *pfrom; //Structure contFrom header
    struct cseq_body * cseq;
-   struct sip_uri * uri=NULL;
+
+   //Remove \r and \n from sip message
+
+   char msg_copy[msg->len+2];
+   snprintf(msg_copy,msg->len+1,msg->buf);
+   remove_newline_str(msg_copy);
+   LM_INFO("Received message : [%s]\n", msg_copy);
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
-      LM_ERR("ERROR: Error parsing headers. Error code=%d\n",PARSE_ERROR);
+      LM_ERR("ERROR: Error parsing headers. Errorcode=%d\n",PARSE_ERROR);
       return PARSE_ERROR;
    }
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
-      LM_ERR("ERROR: Bad Header. Error code=%d\n",PARSER_ERROR);
+      LM_ERR("ERROR: Bad Header. Errorcode=%d\n",PARSER_ERROR);
       return PARSER_ERROR;
    }
    pfrom = get_from(msg); //Get structure containing parsed From header
    cseq = get_cseq(msg);
-   uri = parse_from_uri(msg);
 
    char from_tag[128];
    char cseq_call[128];
@@ -4252,7 +4349,7 @@ parse_ACK(struct sip_msg* msg)
     rpl_data.text =&st;
     b2b_api.send_reply(&rpl_data);*/
 
-   LM_INFO("Information ACK. call_id=%s | src_ip=%s | from_tag=%s | user_name=%.*s\n",callID, src_ip, from_tag,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+   LM_INFO("Information from ACK. call_id=%s | src_ip=%s | from_tag=%s\n",callID, src_ip, from_tag);
 
    /////////////////////////////////////  Find a client and validate connection state ///////////////////////////
 
@@ -4272,13 +4369,15 @@ parse_ACK(struct sip_msg* msg)
             if (connection->clients[c].is_empty == 1 && (strcmp(connection->clients[c].tag, from_tag) == 0))
             {
                caller = &(connections[i].clients[c]);
-               LM_INFO("Found client. b2bcallid=%d | client_id=%d | state=%d | tag=%s | user_name=%s\n",
-            		   connection->id,caller->id,caller->s,caller->tag,caller->user_name);
+               LM_NOTICE("Received ACK from known client. b2bcallid=%d | client_id=%d | tag=%s | username=%s\n",
+                           		   connection->id,caller->id,caller->tag,caller->user_name);
+               LM_INFO("Received ACK from known client. b2bcallid=%d | conn_state=%d | client_id=%d | state=%d | tag=%s | username=%s\n",
+            		   connection->id,connection->s,caller->id,caller->s,caller->tag,caller->user_name);
                get_client(connection, caller, &cli_dst); // Get destination client to insert the chosen payload
                if (cli_dst == NULL)
                {
                   ////// Terminate connection
-                  LM_ERR("ERROR: No destination client found. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | src_ip %s | user_name=%s | Error code=%d\n",
+                  LM_ERR("ERROR: No destination client found. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | src_ip %s | username=%s | Errorcode=%d\n",
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->src_ip, caller->user_name,PARSER_ERROR);
                   send_remove_to_xcoder(connection);
                   cancel_connection(connection);
@@ -4297,13 +4396,14 @@ parse_ACK(struct sip_msg* msg)
                if ((strcmp(method_previous, "INVITE") != 0)
                      && (caller->s != PENDING_200OK || caller->s == PENDING_HOLD || caller->s == PENDING_OFF_HOLD))
                {
-                  LM_INFO("Uninteresting message. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,caller->id,caller->user_name);
+                  LM_NOTICE("Uninteresting message. b2bcallid=%d | conn_state=%d | caller_id=%d | caller_state=%d | callee_id=%d | callee_state=%d\n",
+                		  connection->id,connection->s,caller->id,caller->s,cli_dst->id,cli_dst->s);
                   return OK;
                }
                else if (caller->s == PENDING_HOLD)
                {
-                  LM_INFO("Call on Hold. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,caller->id,caller->user_name);
-                  LM_DBG("Call on Hold. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | user_name=%s. caller port : %s | callee port %s\n",
+                  LM_NOTICE("Call on Hold. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,caller->id,caller->user_name);
+                  LM_INFO("Call on Hold. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | username=%s. caller port : %s | callee port %s\n",
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
@@ -4312,8 +4412,8 @@ parse_ACK(struct sip_msg* msg)
                }
                else if (caller->s == PENDING_OFF_HOLD)
                {
-                  LM_INFO("Call is off Hold. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,caller->id,caller->user_name);
-                  LM_DBG("Call on Hold. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | user_name=%s. Caller port : %s | Calee port %s\n",
+                  LM_NOTICE("Call is off Hold. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,caller->id,caller->user_name);
+                  LM_INFO("Call on Hold. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | username=%s. Caller port : %s | Calee port %s\n",
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
@@ -4323,8 +4423,8 @@ parse_ACK(struct sip_msg* msg)
                }
                else if (connections[i].s == REINVITE)
                {
-                  LM_INFO("Creating call after a reinvite. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,caller->id,caller->user_name);
-                  LM_DBG("Creating call after a reinvite. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | user_name=%s. caller port : %s | callee port %s\n",
+                  LM_NOTICE("Creating call after a reinvite. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,caller->id,caller->user_name);
+                  LM_INFO("Creating call after a reinvite. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | username=%s. caller port : %s | callee port %s\n",
                                   		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
@@ -4334,8 +4434,8 @@ parse_ACK(struct sip_msg* msg)
                }
                else if (connections[i].s == EARLY_MEDIA)
                {
-                  LM_INFO("Creating call after early media. b2bcallid=%d | client_id=%d | user_name=%s\n",connection->id,caller->id,caller->user_name);
-                  LM_DBG("Creating call after early media. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | user_name=%s. caller port : %s | callee port %s\n",
+                  LM_NOTICE("Creating call after early media. b2bcallid=%d | client_id=%d | username=%s\n",connection->id,caller->id,caller->user_name);
+                  LM_INFO("Creating call after early media. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | username=%s. caller port : %s | callee port %s\n",
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
@@ -4345,7 +4445,7 @@ parse_ACK(struct sip_msg* msg)
                }
                else if (connections[i].s == CREATING)
                {
-                  LM_INFO("Creating call. b2bcallid=%d | client_id=%d | user_name=%s\n", connection->id,caller->id,caller->user_name);
+                  LM_INFO("Creating call. b2bcallid=%d | caller_id=%d | callee_id=%d\n", connection->id,caller->id,cli_dst->id);
                   sprintf(connections[i].cseq, cseq_call);
 
                   i = MAX_CONNECTIONS; // To leave the cycle
@@ -4353,7 +4453,8 @@ parse_ACK(struct sip_msg* msg)
                }
                else
                {
-                  LM_INFO("Nothing to do. b2bcallid=%d\n",connection->id);
+            	  LM_INFO("Nothing to do. b2bcallid=%d | conn_state=%d | call_id=%s | b2b_gen_call_id=%s | client_id=%d | state=%d | tag=%s | username=%s. caller port : %s | callee port %s\n",
+            			  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   return OK;
                }
             }
@@ -4363,20 +4464,20 @@ parse_ACK(struct sip_msg* msg)
 
    if (connection == NULL)
    {
-      LM_INFO("No connection found. call_id=%s | src_ip=%s | user_name=%.*s\n",callID, src_ip,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+      LM_NOTICE("No connection found. call_id=%s | src_ip=%s\n",callID, src_ip);
       return GENERAL_ERROR;
    }
 
    if(caller == NULL)
    {
-	   LM_ERR("No client found on connection. b2bcallid=%d | call_id=%s | b2b_gen_call_id=%s | src_ip=%s | user_name=%.*s\n",
-			   connection->id, connection->call_id, connection->b2b_client_callID, src_ip,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
+	   LM_ERR("No client found on connection. b2bcallid=%d | call_id=%s | b2b_gen_call_id=%s | src_ip=%s\n",
+			   connection->id, connection->call_id, connection->b2b_client_callID, src_ip);
 	   int m=0;
 	   for(m=0;m<MAX_CLIENTS;m++)
 	   {
 		   if(connection->clients[m].is_empty == 1)
 		   {
-			   LM_ERR("Client info for b2bcallid=%d | client id=%d | state=%d | src_ip=%s | tag=%s | b2b_tag=%s | Error code=%d\n",
+			   LM_ERR("Client info for b2bcallid=%d | client id=%d | state=%d | src_ip=%s | tag=%s | b2b_tag=%s | Errorcode=%d\n",
 					   connection->id,connection->clients[m].id,connection->clients[m].s,connection->clients[m].src_ip,connection->clients[m].tag,connection->clients[m].b2b_tag,GENERAL_ERROR);
 			   free_ports_client(&(connection->clients[m]));
 		   }
@@ -4394,7 +4495,7 @@ parse_ACK(struct sip_msg* msg)
    if (status != OK)
    {
 	   //TODO: IMPRIMIR TUDO NESTE ERRO
-      LM_INFO("Error creating call.b2bcallid=%d | conn_state=%d | call_id=%s | caller state=%d | callee_state %d\n",
+      LM_NOTICE("Error creating call.b2bcallid=%d | conn_state=%d | call_id=%s | caller state=%d | callee_state %d\n",
             connection->id, connection->s, connection->call_id,caller->s, cli_dst->s);
 
       free_ports_client(caller);
@@ -4403,12 +4504,12 @@ parse_ACK(struct sip_msg* msg)
       switch (caller->s)
       {
          case PENDING_HOLD:
-            LM_INFO("Failed to put call on hold.Caller %d remains Active\n", caller->id);
+            LM_NOTICE("Failed to put call on hold.Caller %d remains Active\n", caller->id);
             caller->s = ACTIVE_C;
             return status;
             break;
          case PENDING_OFF_HOLD:
-            LM_INFO("Failed to put call off hold.Caller %d remains on hold\n", caller->id);
+            LM_NOTICE("Failed to put call off hold.Caller %d remains on hold\n", caller->id);
             caller->s = ON_HOLD;
             return status;
             break;
@@ -4417,15 +4518,15 @@ parse_ACK(struct sip_msg* msg)
             switch (connection->s)
             {
                case REINVITE:
-                  LM_INFO("Failed to process reinvite.Caller %d is Active.\n", caller->id);
+                  LM_NOTICE("Failed to process reinvite.Caller %d is Active.\n", caller->id);
                   caller->s = ACTIVE_C;
                   return status;
                   break;
                case CREATING:
-                  LM_INFO("Failed to create call\n");
+                  LM_NOTICE("Failed to create call\n");
                   break;
                default:
-                  LM_ERR("Wrong connection state to create call. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Src client state ip %s |Error code=%d\n",
+                  LM_ERR("Wrong connection state to create call. Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Src client state ip %s |Errorcode=%d\n",
                 		  connection->id,connection->s,connection->call_id,caller->id,caller->s,caller->src_ip,status);
                   cancel_connection(connection);
                   return PARSER_ERROR;
@@ -4455,38 +4556,39 @@ parse_ACK(struct sip_msg* msg)
    switch (caller->s)
    {
       case PENDING_HOLD:
-         LM_INFO("Caller %d is on hold\n", caller->id);
          caller->s = ON_HOLD;
+         LM_NOTICE("Call is on hold b2bcallid=%d.Caller_id=%d is on hold\n", connection->id,caller->id);
          break;
       case PENDING_OFF_HOLD:
-         LM_INFO("Caller %d is off hold\n", caller->id);
          caller->s = ACTIVE_C;
+         LM_NOTICE("Caller_id=%d is off hold. b2bcallid=%d\n", caller->id,connection->id);
          break;
       default:
       {
          switch (connection->s)
          {
             case REINVITE:
-               LM_INFO("Caller %d is Active\n", caller->id);
+               LM_NOTICE("Call from reinvite is established. b2bcallid=%d | caller_id=%d | callee_id=%d\n", connection->id,caller->id, cli_dst->id);
                caller->s = ACTIVE_C;
                break;
             case EARLY_MEDIA:
                ; // Behaves as CREATING
             case CREATING:
-               LM_INFO("Clients %d and %d are Active\n", caller->id, cli_dst->id);
+               LM_NOTICE("Call is established. b2bcallid=%d | caller_id=%d | callee_id=%d\n", connection->id,caller->id, cli_dst->id);
                caller->s = ACTIVE_C;
                cli_dst->s = ACTIVE_C;
                break;
             default:
-               LM_ERR("Wrong connection state to create call.Conn id %d | conn_state=%d | Conn call_id=%s | Src client_id=%d | Src client state=%d | Src client state ip %s |Error code=%d\n",
-            		   connection->id,connection->s,connection->call_id,caller->id,caller->s,caller->src_ip,PARSER_ERROR);
+               LM_ERR("Wrong connection state to create call. b2bcallid=%d | conn_state=%d | call_id=%s | caller_id=%d | caller state=%d | caller_ip %s | callee_id=%d | callee state=%d | callee_ip %s | Errorcode=%d\n",
+            		   connection->id,connection->s,connection->call_id,caller->id,caller->s,caller->src_ip,cli_dst->id,cli_dst->s,cli_dst->src_ip,PARSER_ERROR);
                return PARSER_ERROR;
          }
          break;
       }
    }
-
    connection->s = ACTIVE;
+   LM_INFO("Call info. b2bcallid=%d | conn_state=%d | caller_id=%d | caller_state=%d | callee_id=%d | callee_state=%d\n",
+       		  connection->id,connection->s,caller->id,caller->s,cli_dst->id,cli_dst->s);
 
    return OK;
 }
@@ -4559,7 +4661,7 @@ get_wms_conf(char * filename, char * config_name, char * config_value)
       bzero(temp, LINE_LENGTH);
       if (get_word(line, &i, temp) == OK)
       {
-         LM_DBG("Configuration retrieved with success. %s: %s\n", config_name, temp);
+         LM_INFO("Configuration retrieved with success. %s: %s\n", config_name, temp);
          sprintf(config_value,"%s", temp);
          break;
       }
@@ -4579,7 +4681,7 @@ get_wms_conf(char * filename, char * config_name, char * config_value)
 
 static int check_overtime_conns(void)
 {
-   LM_INFO("Checking for overtimed connections\n");
+	LM_INFO("Checking for overtimed connections\n");
 	time_t current_time;
 	current_time = time(0);
 	int i = 0;
@@ -4589,7 +4691,7 @@ static int check_overtime_conns(void)
 		{
 			if(current_time!=0 && connections[i].conn_time != 0 && current_time-connections[i].conn_time > (*g_connection_timeout) )
 			{
-				LM_INFO("Found overtimed connection: b2b_call_id=%d | uptime=%ld\n",connections[i].id,current_time-connections[i].conn_time);
+				LM_NOTICE("Found overtimed connection: b2bcallid=%d | uptime=%ld\n",connections[i].id,current_time-connections[i].conn_time);
 
 				switch(connections[i].s)
 				{
@@ -4603,7 +4705,7 @@ static int check_overtime_conns(void)
 						{
 							if(connections[i].clients[k].is_empty == 1)
 							{
-								LM_INFO("Cleaning connection for client %d in connection %d\n",connections[i].clients[k].id,connections[i].id);
+								LM_NOTICE("Cleaning connection b2bcallid=%d | client_id%d\n",connections[i].id,connections[i].clients[k].id);
 								free_ports_client(&(connections[i].clients[k]));
 							}
 						}
@@ -4623,7 +4725,7 @@ static int check_overtime_conns(void)
 				}
 				continue;
 			}
-			LM_DBG("Connection starttime %ld | connection uptime %ld\n",connections[i].conn_time,current_time-connections[i].conn_time); //TODO: Change to LM_DBG
+			LM_INFO("Connection start_time %ld | connection uptime %ld\n",connections[i].conn_time,current_time-connections[i].conn_time);
 		}
 	}
 	return OK;
@@ -4664,11 +4766,11 @@ static struct mi_root* mi_xcoder_b2b_update_codecs(struct mi_root* cmd, void* pa
 
    sprintf(buffer_sent, "xcoder/1.0\r\nmsg_type=command\r\nmsg_value=get_codecs\r\nmsg_count=%d\r\n<EOM>\r\n", message_number); // Command to send to xcoder
 
-   status = talk_to_xcoder(buffer_sent, buffer_recv, message_number);
+   status = talk_to_xcoder(buffer_sent, message_number,buffer_recv);
 
    if (status != OK)
    {
-	  LM_INFO("Error interacting with xcoder.\n");
+	  LM_NOTICE("Error interacting with xcoder.\n");
 	  return NULL;
    }
 
@@ -4676,7 +4778,7 @@ static struct mi_root* mi_xcoder_b2b_update_codecs(struct mi_root* cmd, void* pa
 
    if (status != OK)
    {
-	  LM_INFO("Error parsing response from xcoder.Errorcode %d\n", status);
+	  LM_NOTICE("Error parsing response from xcoder.Errorcode %d\n", status);
 	  return NULL;
    }
 
@@ -4695,7 +4797,7 @@ static struct mi_root* mi_xcoder_b2b_update_codecs(struct mi_root* cmd, void* pa
 		  codec_number++;
 	  }
    }
-   LM_INFO("Supported codecs are %s:\n",codec);
+   LM_NOTICE("Supported codecs are %s:\n",codec);
 
    if (codec_number < 1)
    {
@@ -4717,8 +4819,8 @@ static struct mi_root* mi_xcoder_b2b_update_codecs(struct mi_root* cmd, void* pa
 static int
 mod_init(void)
 {
-   LM_INFO("Initializing xcoder_b2b module.\n");
-   LM_INFO("Configuration file is : %s\n", conf_file);
+   LM_NOTICE("Initializing xcoder_b2b module.\n");
+   LM_NOTICE("Configuration file is : %s\n", conf_file);
 
    int status = OK; // Holds the status of operations
 
@@ -4801,9 +4903,9 @@ mod_init(void)
    get_wms_conf(conf_file, "sm.session.timeout", temp); //Read file and retrieve media server ip
    *g_connection_timeout = atoi(temp);
 
-   LM_INFO("********** CONFIGURATIONS **********\n");
-   LM_INFO("media_relay_ip: %s | connection_timeout: %d\n", media_relay, (*g_connection_timeout) );
-   LM_INFO("************************************\n");
+   LM_NOTICE("********** CONFIGURATIONS **********\n");
+   LM_NOTICE("media_relay_ip: %s | connection_timeout: %d\n", media_relay, (*g_connection_timeout) );
+   LM_NOTICE("************************************\n");
 
 
    if (connections == NULL)
@@ -4842,11 +4944,11 @@ mod_init(void)
 
    sprintf(buffer_sent, "xcoder/1.0\r\nmsg_type=command\r\nmsg_value=get_codecs\r\nmsg_count=%d\r\n<EOM>\r\n", message_number); // Command to send to xcoder
 
-   status = talk_to_xcoder(buffer_sent, buffer_recv, message_number);
+   status = talk_to_xcoder(buffer_sent, message_number,buffer_recv);
 
    if (status != OK)
    {
-      LM_INFO("Error interacting with xcoder.\n");
+      LM_NOTICE("Error interacting with xcoder.\n");
       return status;
    }
 
@@ -4854,7 +4956,7 @@ mod_init(void)
 
    if (status != OK)
    {
-      LM_INFO("Error parsing response from xcoder.Errorcode %d\n", status);
+      LM_NOTICE("Error parsing response from xcoder.Errorcode %d\n", status);
       return status;
    }
 
@@ -4873,7 +4975,7 @@ mod_init(void)
 		  codec_number++;
 	  }
    }
-   LM_INFO("Supported codecs are %s:\n",codec);
+   LM_NOTICE("Supported codecs are %s:\n",codec);
 
    if (codec_number < 1)
    {
@@ -4881,7 +4983,7 @@ mod_init(void)
 	  return -1;
    }
 
-   LM_INFO("Module xcoder_b2b loaded successfully\n");
+   LM_NOTICE("Module xcoder_b2b loaded successfully\n");
    return 0;
 }
 
@@ -4893,7 +4995,7 @@ mod_init(void)
 static void
 mod_destroy(void)
 {
-   LM_INFO("CLEANING XCODER_B2B\n");
+   LM_NOTICE("CLEANING XCODER_B2B\n");
    if(connections!=NULL)
    {
 		int i=0;

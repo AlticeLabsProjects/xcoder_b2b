@@ -82,9 +82,8 @@ typedef enum xcoder_b2b_return
 	DUPLICATE_CLIENT	= -7,		// If a request call arrives of an already existing caller
 	DUPLICATE_CALLEE	= -8,		// If a response call arrives of an already existing callee
 	TO_DROP				= -9,		// When is to be dropped, ex : when a repetitive invite is received.
-	SERVICE_FULL		= -10,		// When array connections if full, all connection slots are occupied
-	VIDEO_UNSUPPORTED	= -11,
-	SOCKET_ERROR		= -12,
+	VIDEO_UNSUPPORTED	= -10,
+	SOCKET_ERROR		= -11,
 	TOTAL_RETURN_VALUES
 } xcoder_return;
 
@@ -150,6 +149,8 @@ typedef struct conn_client
 	int id;										// Hold an unique id of the client.
 	char src_ip[25];							// Contains the source ip of the client
 	char dst_ip[25];							// Contains the destination ip
+	char user_name[128];						// Contains the user name
+	char user_agent[128];						// Contains the User-Agent header
 	char conn_ip[25];							// Contains the connection ip
 	char tag[128];								// Tag representing the client
 	char b2b_tag[128];							// B2B Tag representing the client,
@@ -198,7 +199,7 @@ typedef struct
 	int	 is_empty;
 } media_relay_codecs;
 
-media_relay_codecs codecs[MAX_PAYLOADS];	// Contains a structure that represent the supported codecs/payloads by media relay
+media_relay_codecs * codecs=NULL;			// Contains a structure that represent the supported codecs/payloads by media relay
 conn * connections=NULL;					// A pointer to the array of connections
 socket_list * fd_socket_list=NULL;			// The set of socket file descriptors to be used
 char * media_relay=NULL;					// A pointer to the media relay ip adress
