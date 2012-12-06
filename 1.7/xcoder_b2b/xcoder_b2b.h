@@ -90,9 +90,9 @@ typedef enum xcoder_b2b_return
 typedef enum b2b_response_codes
 {
 	SERVER_TIME_OUT				= 	504,		// When the communication with xcoder fails
-	SERVER_SERVICE_UNAVAILABLE	=	503,		// When the is no more slots available or xcoder command get_ports returns Errcode=3 
+	SERVER_UNAVAILABLE			=	503,		// When the is no more slots available or xcoder command get_ports returns Errcode=3
 	SERVER_INTERNAL_ERROR		= 	500,		// When a an internal server error occurs.
-	UNSUPPORTED_MEDIA_TYPE  	= 	415,		// When client codecs are not supported by media relay
+	NOT_ACCEPTABLE_HERE			= 	488,		// When client codecs are not supported by media relay
 	NOT_FOUND					= 	404,		// When a client is not found in any structure
 	TOTAL_RESPONSE_CODES
 } response_codes;
