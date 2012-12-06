@@ -3616,7 +3616,7 @@ parse_invite(struct sip_msg *msg)
                 clean_connection(&(connections[i]));
                 return DUPLICATE_CLIENT;
                 }
-                else*/if ((strcmp(connections[i].cseq, cseq_call) == 0) && (strcmp(connections[i].call_id, callID) == 0)) //check if is a repetive invite
+                else*/if ((strcmp(connections[i].cseq, cseq_call) == 0) && ( (strcmp(connections[i].call_id, callID) == 0) || strcmp(connections[i].b2b_client_callID, callID) == 0)) //check if is a repetive invite
                {
                   LM_NOTICE("Repetive invite from %s. dropping message. call_id=%s | from_tag=%s | cseq=%s\n", src_ip,callID,tag,cseq_call);
                   return TO_DROP;
