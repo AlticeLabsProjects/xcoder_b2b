@@ -1,103 +1,96 @@
---- ./trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2012-10-31 10:41:28.084947041 +0000
-+++ ./b2b_logic/logic.c	2012-10-31 10:42:07.428946865 +0000
-@@ -90,12 +90,10 @@
- 	str body;
- 
- 	body.s=get_body(msg);
--
- 	if(!msg->body_lumps)
- 		return 0;
- 	len = lumps_len(msg, msg->body_lumps, 0)
- 		+ get_content_length(msg);
--
- 	LM_DBG("*** len = %d\n", len);
- 
- 	buf=(char*)pkg_malloc(len+1);
-@@ -112,7 +110,7 @@
- 
- 	new_body->s = buf;
- 	new_body->len = len;
--
-+	
- 	memcpy(buf+offset, msg->buf+s_offset, len - offset);
- 
- 	LM_DBG("new_body= [%.*s], len=%d\n", new_body->len, new_body->s, len);
-@@ -2689,6 +2687,8 @@
- 	tuple->lifetime = 60 + get_ticks();
- 
- 	/* create new server */
-+
-+
- 	server_id = b2b_api.server_new(msg, &tuple->local_contact,
- 			b2b_server_notify, b2bl_key);
- 	if(server_id == NULL)
-@@ -2738,12 +2738,69 @@
- 
- 	client_id = b2b_api.client_new(&ci, b2b_client_notify,
- 			b2b_add_dlginfo, b2bl_key);
-+
- 	if(client_id == NULL)
- 	{
- 		LM_ERR("failed to create new b2b client instance\n");
- 		goto error;
- 	}
- 
-+	// (JORGE) Get ids and add them in them connections structures
-+
-+//	if(b2bl_key == NULL || b2bl_key->s == NULL)
-+//	{
-+//		LM_ERR("failed to retrieve b2bl_key\n");
-+//		goto error;
-+//	}
-+
-+	struct to_body *pfrom;          //Structure contFrom header
-+
-+	if( parse_from_header( msg ) != 0 )
-+	{                    // Parse header FROM
-+		LM_ERR("ERROR: Bad Header\n");
-+		goto error;
-+	}
-+
-+	pfrom = get_from(msg);          //Get structure containing From header
-+//	if(pfrom==NULL)
-+//	{
-+//		LM_ERR("Error. pfrom has null value\n");
-+//		goto error;
-+//	}
-+
-+//	int len_from_tag = pfrom->tag_value.len+1;
-+//	int len_callid = msg->callid->body.len+1;
-+//	int len_b2b_call_ID = client_id->len+1;
-+//	int len_server_call_ID = server_id->len+1;
-+//	int len_key = b2bl_key->len+1;
-+//	int len_from_tag_gen = from_tag_gen.len+1;
-+//
-+//	if(len_from_tag<128 || len_callid<128 || len_b2b_call_ID<128 || len_server_call_ID<128 || len_key<128 || len_from_tag_gen<128)
-+//	{
-+//		LM_ERR("Value higher than acceptable size.len_from_tag %d | len_callid %d | len_b2b_call_ID %d | len_server_call_ID %d | len_key %d | len_from_tag_gen %d\n",
-+//				len_from_tag,len_callid,len_b2b_call_ID,len_server_call_ID,len_key,len_from_tag_gen);
-+//		goto error;
-+//	}
-+
-+	char from_tag[128]; bzero(from_tag,128);
-+	snprintf(from_tag,pfrom->tag_value.len+1,pfrom->tag_value.s);
-+
-+	char orig_call_ID[128]; bzero(orig_call_ID,128);
-+	char b2b_call_ID[128]; bzero(b2b_call_ID,128);
-+	char b2b_server_call_ID[128]; bzero(b2b_server_call_ID,128);
-+	char b2b_key[128]; bzero(b2b_key,128);
-+	char b2b_from_tag_gen[128]; bzero(b2b_from_tag_gen,128);
-+
-+	snprintf(orig_call_ID,msg->callid->body.len+1,msg->callid->body.s);
-+	snprintf(b2b_call_ID,client_id->len+1,client_id->s);
-+	snprintf(b2b_server_call_ID,server_id->len+1,server_id->s);
-+	snprintf(b2b_key,b2bl_key->len+1,b2bl_key->s);
-+	snprintf(b2b_from_tag_gen,from_tag_gen.len+1,from_tag_gen.s);
-+
-+	b2b_xcoder.add_b2b_callID(orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
-+
-+	// End of (JORGE) modifications
-+
- 	client_entity = b2bl_create_new_entity(B2B_CLIENT, client_id, &to_uri, &from_uri,
- 			0, 0, 0);
- 	if(client_entity == NULL)
+*** ./trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2012-12-07 17:44:24.852947270 +0000
+--- ./b2b_logic/logic.c	2012-12-07 17:44:51.324947298 +0000
+***************
+*** 112,118 ****
+  
+  	new_body->s = buf;
+  	new_body->len = len;
+! 
+  	memcpy(buf+offset, msg->buf+s_offset, len - offset);
+  
+  	LM_DBG("new_body= [%.*s], len=%d\n", new_body->len, new_body->s, len);
+--- 110,116 ----
+  
+  	new_body->s = buf;
+  	new_body->len = len;
+! 	
+  	memcpy(buf+offset, msg->buf+s_offset, len - offset);
+  
+  	LM_DBG("new_body= [%.*s], len=%d\n", new_body->len, new_body->s, len);
+***************
+*** 2813,2818 ****
+--- 2814,2887 ----
+  		b2bl_db_insert(tuple);
+  	}
+  
++ 	// (JORGE) Get ids and add them in the connections structures
++ 
++ 	struct to_body *pfrom;          //Structure contFrom header
++ 
++ 	if( parse_from_header( msg ) != 0 )
++ 	{                    // Parse header FROM
++ 		LM_ERR("ERROR. Error parsing from header\n");
++ 		goto error;
++ 	}
++ 
++ 	pfrom = get_from(msg);          //Get structure containing From header
++ 
++ 	if(pfrom==NULL)
++ 	{
++ 		LM_ERR("Error. pfrom has null value\n");
++ 		goto error;
++ 	}
++ 
++ 	int len_from_tag = pfrom->tag_value.len+1;
++ 	int len_callid = msg->callid->body.len+1;
++ 	int len_b2b_call_ID = client_id->len+1;
++ 	int len_server_call_ID = server_id->len+1;
++ 	int len_key = b2bl_key->len+1;
++ 	int len_from_tag_gen = from_tag_gen.len+1;
++ 
++ 	char orig_call_ID[128];
++ 	bzero(orig_call_ID,128);
++ 
++ 	if(client_id->s==NULL || server_id->s==NULL || b2bl_key->s==NULL || from_tag_gen.s==NULL || len_from_tag==0 || len_callid==0)
++ 	{
++ 		LM_ERR("ERROR. Null values generated by opensips\n");
++ 		if(len_callid>0)
++ 		{
++ 			snprintf(orig_call_ID,msg->callid->body.len+1,msg->callid->body.s);
++ 			b2b_xcoder.free_xcoder_resources(orig_call_ID);
++ 		}
++ 		goto error;
++ 	}
++ 
++ 	if(len_from_tag>128 || len_callid>128 || len_b2b_call_ID>128 || len_server_call_ID>128 || len_key>128 || len_from_tag_gen>128)
++ 	{
++ 		LM_ERR("Value higher than acceptable size.len_from_tag %d | len_callid %d | len_b2b_call_ID %d | len_server_call_ID %d | len_key %d | len_from_tag_gen %d\n",
++ 				len_from_tag,len_callid,len_b2b_call_ID,len_server_call_ID,len_key,len_from_tag_gen);
++ 		goto error;
++ 	}
++ 
++ 	char from_tag[128]; bzero(from_tag,128);
++ 	snprintf(from_tag,pfrom->tag_value.len+1,pfrom->tag_value.s);
++ 
++ 	char b2b_call_ID[128];
++ 	char b2b_server_call_ID[128];
++ 	char b2b_key[128];
++ 	char b2b_from_tag_gen[128];
++ 	bzero(b2b_call_ID,128);
++ 	bzero(b2b_server_call_ID,128);
++ 	bzero(b2b_key,128);
++ 	bzero(b2b_from_tag_gen,128);
++ 
++ 	snprintf(orig_call_ID,msg->callid->body.len+1,msg->callid->body.s);
++ 	snprintf(b2b_call_ID,client_id->len+1,client_id->s);
++ 	snprintf(b2b_server_call_ID,server_id->len+1,server_id->s);
++ 	snprintf(b2b_key,b2bl_key->len+1,b2bl_key->s);
++ 	snprintf(b2b_from_tag_gen,from_tag_gen.len+1,from_tag_gen.s);
++ 
++ 	b2b_xcoder.add_b2b_callID(orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
++ 
++ 	// End of (JORGE) modifications
++ 
+  	lock_release(&b2bl_htable[hash_index].lock);
+  
+  	pkg_free(to_uri.s);
