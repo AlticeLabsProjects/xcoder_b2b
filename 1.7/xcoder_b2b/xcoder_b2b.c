@@ -3190,8 +3190,8 @@ parse_200OK(struct sip_msg *msg)
 
    if (match_count > 0)
    {
-      LM_INFO("This ip [%s], is already active in one connection. b2bcallid=%d | client_id=%d | username=%s\n",
-    		  src_ip,connections[i].id, cli->id,cli->user_name);
+      LM_INFO("This ip [%s], is already active in one connection. b2bcallid=%d\n",
+    		  src_ip,connections[i].id);
    }
 
    ////////////////////////////////////// Find the connection and create a new client ///////////////////////////
