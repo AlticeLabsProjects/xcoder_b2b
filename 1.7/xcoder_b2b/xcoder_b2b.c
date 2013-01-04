@@ -1482,7 +1482,7 @@ talk_to_xcoder(char * to_send,int message_number, char * received)
    bzero(value, 128);
    get_value_from_str("msg_count",received,value);
    int rcv_msg_count = atoi(value);
-   LM_NOTICE("Checking msg_count. Send %d | Received %d\n",message_number,rcv_msg_count);
+   LM_INFO("Checking msg_count. Send %d | Received %d\n",message_number,rcv_msg_count);
 
    if(rcv_msg_count!=message_number)
    {
@@ -2470,7 +2470,7 @@ free_xcoder_resources(char * callID)
 	         }
 	         else
 	         {
-	            LM_ERR("Wrong connection state. b2bcallid=%d |conn_state : %d | call_id=%s\n", connections[i].id, connections[i].s,callID);
+	            LM_ERR("Wrong connection state. b2bcallid=%d |conn_state=%d | call_id=%s\n", connections[i].id, connections[i].s,callID);
 	         }
 	         break;
 	      }
@@ -2623,7 +2623,7 @@ parse_codecs(char * message)
 
          }
       }
-      LM_INFO("Param : %s | Value : %s\n\n", param_name, value);
+      LM_INFO("Param : %s | Value : %s\n", param_name, value);
 
       move_to_end(message, &i); // Move to end of line
    }
@@ -2880,10 +2880,12 @@ parse_183(struct sip_msg *msg)
                   LM_INFO("Found empty client. b2bcallid=%d | client_id%d\n", connections[i].id,c);
                   char * caller_src_ip = connections[i].clients[0].src_ip; //Retrieve caller source IP
 
-                  connections[i].clients[c].is_empty = 1;
-                  connection = &(connections[i]);
                   cli = &(connections[i].clients[c]);
                   clean_client(cli);
+                  cli->is_empty = 1;
+                  connection = &(connections[i]);
+
+
                   char id[4];
 
                   sprintf(id, "%d%d", i, c); // Create id based on connections and clients indexes
@@ -4099,6 +4101,13 @@ create_call(conn * connection, client * caller)
 
    client * callee = NULL;
    get_client(connection, caller, &callee); //Get destination client
+   if (callee == NULL)
+   {
+      LM_ERR("Error: Error retrieving destination client. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | error_code=%d\n",
+    		  connection->id,connection->s,connection->call_id,caller->id,caller->s,GENERAL_ERROR);
+      return GENERAL_ERROR;
+   }
+
 
    xcoder_msg_t msg_x;
    memset(&msg_x, 0, sizeof(xcoder_msg_t));
@@ -4517,7 +4526,6 @@ parse_ACK(struct sip_msg* msg)
    // Check for errors in creating call
    if (status != OK)
    {
-	   //TODO: IMPRIMIR TUDO NESTE ERRO
       LM_NOTICE("Error creating call.b2bcallid=%d | conn_state=%d | call_id=%s | caller state=%d | callee_state %d\n",
             connection->id, connection->s, connection->call_id,caller->s, cli_dst->s);
 
