@@ -1903,6 +1903,12 @@ readline_M(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
                            return VIDEO_UNSUPPORTED;
                            // Video not available
                         }
+                        else if( (strcmp(tmp_call_type, "image") == 0) )
+                        {
+                 		   LM_ERR("Found fax attributes in the message. This feature is not yet supported, error_code=%d\n",NOT_ACCEPTABLE);
+                 		   return NOT_ACCEPTABLE;
+
+                        }
                         else
                            LM_ERR("Different media type. Call type %s | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | error_code=%d\n",
                         		   tmp_call_type,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,status);
@@ -3597,6 +3603,46 @@ parse_invite(struct sip_msg *msg)
    LM_NOTICE("Incoming call. call_id=%s | src_ip=%s | from_tag=%s | username=%s\n",
 		   callID,src_ip,tag,user_name);
 
+   ////////////////////// Check if contains fax attributes ////////////
+
+   if (parse_sdp(msg) < 0)
+   {
+      LM_ERR("Unable to parse sdp. error_code=%d | message %s\n",PARSER_ERROR,msg_copy);
+      return PARSER_ERROR;
+   }
+
+   struct sdp_info* sdp;
+   sdp = msg->sdp;
+
+   struct sdp_session_cell *sessions;
+   sessions = sdp->sessions;
+
+   struct sdp_stream_cell* streams;
+   streams = sessions->streams;
+
+   char media_type[32];  //if size value is changed, change also the next if claus
+   bzero(media_type,32);
+
+   while(streams!=NULL)
+   {
+	   if(32 < streams->media.len+1) // if 32 number is changed, change also the size of media_type variable above
+	   {
+		   LM_ERR("Media type variable ('media_type') is shorter than stream->media, error_code=%d\n",PARSER_ERROR);
+		   return PARSER_ERROR;
+	   }
+
+	   snprintf(media_type,streams->media.len+1,streams->media.s);
+	   LM_INFO("Media type is %s\n",media_type);
+	   if(strcmp(media_type,"image")==0)
+	   {
+		   LM_ERR("Found fax attributes in the message. This feature is not yet supported, error_code=%d | reason=%s\n",NOT_ACCEPTABLE,"Not Acceptable");
+		   return NOT_ACCEPTABLE;
+	   }
+
+	   streams=streams->next;
+   }
+
+
    ////////////////////// Checks if client existes //////////////////
 
    for (i = 0; i < MAX_CONNECTIONS; i++)
@@ -3694,6 +3740,9 @@ parse_invite(struct sip_msg *msg)
          case SERVER_UNAVAILABLE :
         	LM_ERR("ERROR. Service is full. b2bcallid=%d | error_code=%d | reason=%s\n",b2bcallid,SERVER_UNAVAILABLE,"Service Unavailable");
         	return SERVER_UNAVAILABLE;
+         case NOT_ACCEPTABLE :
+        	LM_ERR("Found fax attributes in the message. This feature is not yet supported, b2bcallid=%d | error_code=%d | reason=%s\n",b2bcallid,NOT_ACCEPTABLE,"Not Acceptable");
+        	return NOT_ACCEPTABLE;
          default:
         	LM_ERR("ERROR. Error parsing sip message. b2bcallid=%d | error_code=%d | reason=%s\n",b2bcallid,SERVER_INTERNAL_ERROR,"Server Internal Error");
             return status;

@@ -94,6 +94,7 @@ typedef enum b2b_response_codes
 	SERVER_INTERNAL_ERROR		= 	500,		// When a an internal server error occurs.
 	NOT_ACCEPTABLE_HERE			= 	488,		// When client codecs are not supported by media relay
 	NOT_FOUND					= 	404,		// When a client is not found in any structure
+	NOT_ACCEPTABLE				=	606,		// When fax (not yet supported) attributes are found in the message
 	TOTAL_RESPONSE_CODES
 } response_codes;
 
