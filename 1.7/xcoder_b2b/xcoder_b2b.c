@@ -4096,14 +4096,14 @@ parse_cancel(struct sip_msg* msg)
          }
          else if (connections[i].s == PENDING_EARLY_MEDIA)
          {
+        	send_remove_to_xcoder(&(connections[i]));
             cancel_connection(&(connections[i]));
-            send_remove_to_xcoder(&(connections[i]));
             break;
          }
          else if (connections[i].s == EARLY_MEDIA)
          {
+        	send_remove_to_xcoder(&(connections[i]));
             cancel_connection(&(connections[i]));
-            send_remove_to_xcoder(&(connections[i]));
             break;
          }
          else
