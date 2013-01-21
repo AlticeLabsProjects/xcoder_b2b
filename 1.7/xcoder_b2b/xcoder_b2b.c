@@ -1449,7 +1449,6 @@ talk_to_xcoder(char * to_send,int message_number, char * received)
    	  default : LM_INFO("Buffer is empty, fd %d. Proceeding to send message\n",socket->fd);
    	  	  	  	  break;
    }
-   socket->busy = 0;
 
    lock_release(socket_lock);
 
