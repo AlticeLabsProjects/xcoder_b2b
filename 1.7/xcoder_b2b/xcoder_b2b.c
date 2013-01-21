@@ -836,9 +836,15 @@ get_all_supported_att(char * att)
    //Remove \r and \n from attribute copy message
 
    char att_copy[strlen(att)+2];
-   snprintf(att_copy,strlen(att)+1,att);
-   remove_newline_str(att_copy);
-   LM_INFO("Supported attribute list : [%s]\n", att_copy);
+   int size=sizeof(att_copy)/sizeof(char);
+   if( size >= (strlen(att)+2) )
+   {
+	   snprintf(att_copy,strlen(att)+1,att);
+	   remove_newline_str(att_copy);
+	   LM_INFO("Supported attribute list : [%s]\n", att_copy);
+   }
+   else
+	   LM_WARN("Failed to allocate space for 'att_copy' variable\n");
 
    return status;
 }
@@ -1156,8 +1162,17 @@ get_ports_xcoder(char * response, char * port)
    //Remove \r and \n from sip message
 
    char msg_copy[strlen(response)];
-   snprintf(msg_copy,strlen(response)+1,response);
-   remove_newline_str(msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (strlen(response)) )
+   {
+	   snprintf(msg_copy,strlen(response)+1,response);
+	   remove_newline_str(msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
+
 
    while (response[pos] != '\0')
    {
@@ -1407,9 +1422,18 @@ talk_to_xcoder(char * to_send,int message_number, char * received)
    while( (status=read_from_xcoder(buffer, socket,0)), status==OK )
    {
 	   char read_copy[strlen(buffer)+1];
-	   snprintf(read_copy,strlen(buffer)+1,buffer);
-	   remove_newline_str(read_copy);
-	   LM_ERR("ERROR. Buffer was not empty. Message read : %s. Proceeding to send message.\n",read_copy);
+	   int size=sizeof(read_copy)/sizeof(char);
+	   if( size >= (strlen(buffer)+1 ))
+	   {
+		   snprintf(read_copy,strlen(buffer)+1,buffer);
+		   remove_newline_str(read_copy);
+		   LM_ERR("ERROR. Buffer was not empty. Message read : %s. Proceeding to send message.\n",read_copy);
+	   }
+	   else
+	   {
+		   LM_ERR("ERROR. Buffer was not empty. Failed to allocate space for 'read_copy' variable\n");
+	   }
+
    }
 
    lock_get(socket_lock);
@@ -1429,10 +1453,18 @@ talk_to_xcoder(char * to_send,int message_number, char * received)
 
    lock_release(socket_lock);
 
-   char cmd_copy[strlen(to_send)+1];
-   snprintf(cmd_copy,strlen(to_send)+1,to_send);
-   remove_newline_str(cmd_copy);
-   LM_NOTICE("Command to xcoder. body [%s] | fd [%d]\n",cmd_copy,socket->fd);
+   char cmd_copy[strlen(to_send)+2];
+   int size=sizeof(cmd_copy)/sizeof(char);
+   if( size >= (strlen(to_send)+2) )
+   {
+	   snprintf(cmd_copy,strlen(to_send)+1,to_send);
+	   remove_newline_str(cmd_copy);
+	   LM_NOTICE("Command to xcoder. body [%s] | fd [%d]\n",cmd_copy,socket->fd);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'cmd_copy' variable\n");
+   }
 
    n = write(socket->fd, to_send, len);
 
@@ -1473,9 +1505,18 @@ talk_to_xcoder(char * to_send,int message_number, char * received)
 
    sprintf(received, buffer);
 
-   char recv_copy[strlen(buffer)+1];
-   snprintf(recv_copy,strlen(buffer)+1,buffer);
-   remove_newline_str(recv_copy);
+   char recv_copy[strlen(buffer)+2];
+   int size_copy= sizeof(recv_copy)/sizeof(char);
+   if( size_copy >= (strlen(buffer)+2) )
+   {
+	   snprintf(recv_copy,strlen(buffer)+1,buffer);
+	   remove_newline_str(recv_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'att_copy' variable\n");
+   }
+
 
    // Check if msg_count received is the same msg_count in the message sent
    char value[128];
@@ -2797,9 +2838,20 @@ parse_183(struct sip_msg *msg)
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Received message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Received message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
+
+
+
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
@@ -3067,9 +3119,17 @@ parse_200OK(struct sip_msg *msg)
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Message received: [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Message received: [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
 
    //Separately parse User-Agent header because is not a mandatory header in a sip message
    if (parse_headers(msg, HDR_USERAGENT_F, 0) != 0)
@@ -3314,9 +3374,17 @@ parse_inDialog_invite(struct sip_msg *msg)
 
    //Remove \r and \n from sip message
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
 
    conn * connection = NULL;
    client * cli_dst = NULL;
@@ -3538,9 +3606,18 @@ parse_invite(struct sip_msg *msg)
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Received message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Received message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
+
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
@@ -3650,32 +3727,34 @@ parse_invite(struct sip_msg *msg)
       if (connections[i].s != EMPTY && connections[i].s != TERMINATED && connections[i].s != REFER_TO) // Find an empty connection
       {
          int c = 0;
-         for (c = 0; c < MAX_CLIENTS; c++) // Checks if all clients are empty
+         for (c = 0; c < MAX_CLIENTS && connections[i].clients[c].is_empty==1; c++) // Checks if all clients are empty
          {
-            if (connections[i].clients[c].is_empty == 1 && strcmp(connections[i].clients[c].src_ip, src_ip) == 0) //check if src ip exists
-            {
+             //Comment to tests, make sure that this validation is required
+             /*if( (strcmp(connections[i].call_id,callID)!=0 ) && (strcmp(connections[i].b2b_client_callID,callID)!=0 )){ //Check if is a differente call-id
+              LM_ERR("ERROR: Active client with different Call-ID.Cleaning connection %d | state %d. Ip = %s | call-id = %s\n.",
+              connections[i].id,connections[i].s,src_ip,callID);
+              send_remove_to_xcoder(&(connections[i]));
+              cancel_connection(&(connections[i]));
+              clean_connection(&(connections[i]));
+              return DUPLICATE_CLIENT;
+              }
+              else*/
 
-               //Comment to tests, make sure that this validation is required
-               /*if( (strcmp(connections[i].call_id,callID)!=0 ) && (strcmp(connections[i].b2b_client_callID,callID)!=0 )){ //Check if is a differente call-id
-                LM_ERR("ERROR: Active client with different Call-ID.Cleaning connection %d | state %d. Ip = %s | call-id = %s\n.",
-                connections[i].id,connections[i].s,src_ip,callID);
-                send_remove_to_xcoder(&(connections[i]));
-                cancel_connection(&(connections[i]));
-                clean_connection(&(connections[i]));
-                return DUPLICATE_CLIENT;
-                }
-                else*/if ((strcmp(connections[i].cseq, cseq_call) == 0) && ( (strcmp(connections[i].call_id, callID) == 0))) //check if is a repetive invite
-               {
-                  LM_NOTICE("Repetive invite from %s. dropping message. call_id=%s | from_tag=%s | cseq=%s\n", src_ip,callID,tag,cseq_call);
-                  return TO_DROP;
-               }
-               else if(strcmp(connections[i].b2b_client_callID, callID) == 0)
-               {
-				  LM_ERR("Detected Invite with callid generated by b2b module.call_id=%s | from_tag=%s | cseq=%s | error_code=%d | reason=%s\n",callID,tag,cseq_call,NOT_ACCEPTABLE,"Not Acceptable");
-				  free_ports_client(&(connections[i].clients[c]));
-				  clean_connection(&(connections[i]));
-				  return NOT_ACCEPTABLE;
-               }
+            if (strcmp(connections[i].clients[c].src_ip, src_ip) == 0) //check if src ip exists
+            	LM_INFO("This ip [%s], is already active in one connection. b2bcallid=%d | call_id=%s\n",src_ip,connections[i].id,callID);
+
+            if ((strcmp(connections[i].cseq, cseq_call) == 0) && ( (strcmp(connections[i].call_id, callID) == 0))) //check if is a repetive invite
+            {
+            	LM_NOTICE("Repetive invite from %s. dropping message. call_id=%s | from_tag=%s | cseq=%s\n", src_ip,callID,tag,cseq_call);
+            	return TO_DROP;
+            }
+            else if(strcmp(connections[i].b2b_client_callID, callID) == 0)
+            {
+            	LM_ERR("Detected Invite with callid generated by b2b module.call_id=%s | from_tag=%s | cseq=%s | error_code=%d | reason=%s\n",callID,tag,cseq_call,NOT_ACCEPTABLE,"Not Acceptable");
+            	//TODO: Analisar o comportamento do SBC para saber cancelo a chamada ou não
+//				free_ports_client(&(connections[i].clients[c]));
+//				cancel_connection(&(connections[i]));
+				return NOT_ACCEPTABLE;
             }
          }
       }
@@ -3781,10 +3860,19 @@ general_failure(struct sip_msg* msg)
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   char * src_ip = ip_addr2a(&msg->rcv.src_ip);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
 
+
+   char * src_ip = ip_addr2a(&msg->rcv.src_ip);
    struct to_body *pfrom; //Structure contFrom header
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F | HDR_CALLID_F, 0) != 0)
@@ -3889,8 +3977,17 @@ parse_refer(struct sip_msg* msg)
 
    //Remove \r and \n from sip message
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
+
 
    ////////////////// Parse headers //////////////
 
@@ -4004,9 +4101,17 @@ parse_bye(struct sip_msg* msg)
    struct to_body *pfrom; //Structure contFrom header
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Received message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Received message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
@@ -4066,9 +4171,18 @@ parse_cancel(struct sip_msg* msg)
 
    //Remove \r and \n from sip message
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Received message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Received message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
+
 
    if (parse_from_header(msg) != 0)
    { // Parse header FROM
@@ -4371,9 +4485,17 @@ parse_ACK(struct sip_msg* msg)
    //Remove \r and \n from sip message
 
    char msg_copy[msg->len+2];
-   snprintf(msg_copy,msg->len+1,msg->buf);
-   remove_newline_str(msg_copy);
-   LM_INFO("Received message : [%s]\n", msg_copy);
+   int size=sizeof(msg_copy)/sizeof(char);
+   if( size >= (msg->len+2) )
+   {
+	   snprintf(msg_copy,msg->len+1,msg->buf);
+	   remove_newline_str(msg_copy);
+	   LM_INFO("Received message : [%s]\n", msg_copy);
+   }
+   else
+   {
+	   LM_WARN("Failed to allocate space for 'msg_copy' variable\n");
+   }
 
    if (parse_headers(msg, HDR_CSEQ_F | HDR_TO_F | HDR_FROM_F, 0) != 0)
    {
