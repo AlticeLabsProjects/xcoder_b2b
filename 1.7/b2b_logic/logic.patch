@@ -1,28 +1,27 @@
---- trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2013-01-28 11:09:15.400687720 +0000
-+++ b2b_logic/logic.c	2013-01-28 11:07:39.084687875 +0000
-@@ -90,12 +90,10 @@
- 	str body;
- 
- 	body.s=get_body(msg);
--
- 	if(!msg->body_lumps)
- 		return 0;
- 	len = lumps_len(msg, msg->body_lumps, 0)
- 		+ get_content_length(msg);
--
- 	LM_DBG("*** len = %d\n", len);
- 
- 	buf=(char*)pkg_malloc(len+1);
-@@ -112,7 +110,7 @@
- 
- 	new_body->s = buf;
- 	new_body->len = len;
--
-+	
- 	memcpy(buf+offset, msg->buf+s_offset, len - offset);
- 
- 	LM_DBG("new_body= [%.*s], len=%d\n", new_body->len, new_body->s, len);
-@@ -2619,6 +2617,33 @@
+--- trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2013-02-20 18:22:03.380687830 +0000
++++ b2b_logic/logic.c	2013-02-20 18:22:18.636687726 +0000
+@@ -2059,6 +2059,20 @@
+ 							replaces_b.to_tag_val.s,
+ 							replaces_b.from_tag_val.len,
+ 							replaces_b.from_tag_val.s);
++               //JORGE BEGIN
++               // Modification made to prevent b2b from dropping Refer messages with wrong Refer-To headers
++					LM_INFO("Wrong dialog values found in Refer. Relaying request\n");
++               /* build extra headers */
++               if(b2b_extra_headers(msg, NULL, NULL, &extra_headers)< 0)
++               {
++                LM_ERR("Failed to construct extra headers\n");
++                goto done;
++               }
++
++               ret = b2b_logic_notify_request(src, msg, key, &body, &extra_headers,
++                               b2bl_key, hash_index, local_index);
++               //JORGE END
++
+ 					goto done;
+ 				}
+ 				if(b2bl_parse_key(&tuple_key, &hash_idx,&local_idx)< 0)
+@@ -2619,6 +2633,33 @@
  	LM_DBG("Gen from_tag= %s\n", fromtag_buf);
  }
  
@@ -56,24 +55,7 @@
  
  str* create_top_hiding_entities(struct sip_msg* msg, b2bl_cback_f cbf,
  		void* cb_param, unsigned int cb_mask, str* custom_hdrs)
-@@ -2689,6 +2714,8 @@
- 	tuple->lifetime = 60 + get_ticks();
- 
- 	/* create new server */
-+
-+
- 	server_id = b2b_api.server_new(msg, &tuple->local_contact,
- 			b2b_server_notify, b2bl_key);
- 	if(server_id == NULL)
-@@ -2738,6 +2765,7 @@
- 
- 	client_id = b2b_api.client_new(&ci, b2b_client_notify,
- 			b2b_add_dlginfo, b2bl_key);
-+
- 	if(client_id == NULL)
- 	{
- 		LM_ERR("failed to create new b2b client instance\n");
-@@ -2813,6 +2841,74 @@
+@@ -2813,6 +2854,74 @@
  		b2bl_db_insert(tuple);
  	}
  
