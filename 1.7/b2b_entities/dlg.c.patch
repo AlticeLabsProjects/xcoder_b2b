@@ -1,0 +1,119 @@
+--- trunk/src/opensips_1_7/modules/b2b_entities/dlg.c	2013-02-21 10:45:12.421187777 +0000
++++ b2b_entities/dlg.c	2013-02-21 10:47:39.512937811 +0000
+@@ -849,6 +844,106 @@
+ 		}
+ 	}
+ 
++	// Begin Jorge modifications, check if a reinvite has fax attributes
++	if(dlg->fax_status==FAX_ERR_SENDED && method_value == METHOD_ACK)
++	{
++		LM_NOTICE("Found ACK in response of an error due to fax attributes. Exit b2b_modules, call_id=%.*s",callid.len,callid.s);
++		dlg->uas_tran = NULL;
++		set_dlg_state( dlg, method_value);
++		UPDATE_DBFLAG(dlg);
++		lock_release(&table[hash_index].lock);
++		goto done;
++	}
++
++	if((dlg->state == B2B_ESTABLISHED && method_value == METHOD_INVITE) )
++	{
++		LM_INFO("Check if reinvite has fax attributes");
++
++		if (parse_sdp(msg) < 0)
++		{
++			LM_ERR("Unable to parse sdp");
++			lock_release(&table[hash_index].lock);
++			return -1;
++		}
++
++		struct sdp_info* sdp;
++		sdp = msg->sdp;
++
++		struct sdp_session_cell *sessions;
++		sessions = sdp->sessions;
++
++		struct sdp_stream_cell* streams;
++		streams = sessions->streams;
++
++		char media_type[32];  //if size value is changed, change also the next if clause
++		bzero(media_type,32);
++
++		while(streams!=NULL)
++		{
++		   if(32 < streams->media.len+1) // if 32 number is changed, change also the size of 'media_type' variable above
++		   {
++			   LM_ERR("Media type variable ('media_type') is shorter than stream->media\n");
++			   streams=streams->next;
++			   continue;
++		   }
++
++		   snprintf(media_type,streams->media.len+1,streams->media.s);
++		   LM_INFO("Media type is %s\n",media_type);
++		   if(strcmp(media_type,"image")==0)
++		   {
++			   LM_NOTICE("Found fax attributes in the message. This feature is not yet supported, call_id=%.*s | error_code=%d | reason=%s\n",callid.len,callid.s,606,"Not Acceptable");
++				str reason={"Not Acceptable", 14};
++				dlg->fax_status=FAX_ERR_FOUND;
++
++				b2b_rpl_data_t rpl_data;
++				b2b_dlginfo_t dlginfo;
++				memset(&rpl_data, 0, sizeof(b2b_rpl_data_t));
++				memset(&dlginfo,0, sizeof(b2b_dlginfo_t));
++
++				etype = (table==server_htable?B2B_SERVER:B2B_CLIENT);
++
++				if(etype==B2B_SERVER)
++				{
++					dlginfo.callid = dlg->callid;
++					dlginfo.fromtag = dlg->tag[CALLER_LEG];
++					dlginfo.totag = to_tag;
++				}
++				else
++				{
++					dlginfo.callid = dlg->callid;
++					dlginfo.fromtag = dlg->tag[CALLEE_LEG];
++					dlginfo.totag = to_tag;
++				}
++
++				rpl_data.et=etype;
++				rpl_data.b2b_key=&b2b_key;
++				rpl_data.method =METHOD_INVITE;
++				rpl_data.code = 606;
++				rpl_data.text=&reason;
++				rpl_data.dlginfo=&dlginfo;
++
++				lock_release(&table[hash_index].lock);
++				b2b_send_reply(&rpl_data);
++
++				dlg->fax_status=FAX_ERR_SENDED;
++
++		   //			dlg->state= B2B_TERMINATED;
++		   //			dlg->uas_tran = NULL;
++		   //			dlg->last_reply_code = 606;
++		   //			set_dlg_state( dlg, method_value);
++		   //			UPDATE_DBFLAG(dlg);
++		   //		current_dlg = dlg;
++
++				lock_release(&table[hash_index].lock);
++
++				goto done;
++		   }
++		   streams=streams->next;
++		}
++	}
++
++	// End of Jorge modifications
++
+ 	b2b_cback = dlg->b2b_cback;
+ 	if(dlg->param.s)
+ 	{
+@@ -1280,7 +1375,8 @@
+ 			tm_tran->method.s, dlg, b2b_key->len, b2b_key->s);
+ 
+ 	if(method_value==METHOD_INVITE &&
+-			(dlg->state==B2B_CONFIRMED || dlg->state==B2B_ESTABLISHED))
++			(dlg->state==B2B_CONFIRMED || dlg->state==B2B_ESTABLISHED) &&
++					dlg->fax_status!=FAX_ERR_FOUND) //Modified by Jorge, added fax_status verification
+ 	{
+ 		LM_DBG("A retransmission of the reply\n");
+ 		lock_release(&table[hash_index].lock);
