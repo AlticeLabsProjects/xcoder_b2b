@@ -3359,6 +3359,7 @@ parse_200OK(struct sip_msg *msg)
    return OK;
 }
 
+
 /******************************************************************************
  *        NAME: parse_inDialog_invite
  * DESCRIPTION: This function is invoked when an in dialog invite arrives.
@@ -3389,6 +3390,7 @@ parse_inDialog_invite(struct sip_msg *msg)
    client * cli_dst = NULL;
    client * cli = NULL;
    int status = OK;
+   int conn_original_state = ACTIVE;
    int caller_original_state = ACTIVE_C;
    int callee_original_state = ACTIVE_C;
 
@@ -3461,7 +3463,7 @@ parse_inDialog_invite(struct sip_msg *msg)
    snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
    sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 
-   LM_NOTICE("Check if is an indialog invite. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | user_name=%.*s\n",
+   LM_NOTICE("Check if is an in dialog invite. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | user_name=%.*s\n",
    		   callID,conn_ip,from_tag, to_tag,pfrom->parsed_uri.user.len,pfrom->parsed_uri.user.s);
 
    int exit = 0;
@@ -3555,6 +3557,7 @@ parse_inDialog_invite(struct sip_msg *msg)
 	  LM_ERR("ERROR: Error parsing sip message. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | state=%d | src_ip=%s | username=%s | tag=%s | b2b_tag=%s | error_code=%d | message [%s]\n",
     		  connections->id,connections->s,connections->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,cli->tag,cli->b2b_tag,status, msg_copy);
       free_ports_client(cli);
+      connection->s=conn_original_state;
       cli->s = caller_original_state;
       cli_dst->s = callee_original_state;
       switch (status)
@@ -3590,8 +3593,8 @@ parse_inDialog_invite(struct sip_msg *msg)
 static int
 parse_invite(struct sip_msg *msg)
 {
-
    LM_INFO("Parsing invite\n");
+
    char * message = get_body(msg); //Retrieves the body section of the sip message
    int i = 0;
    conn * connection = NULL;
@@ -4034,6 +4037,7 @@ parse_refer(struct sip_msg* msg)
             && (strcmp(connections[i].call_id, callID) == 0 || strcmp(connections[i].b2b_client_callID, callID) == 0))
       {
 
+    	 LM_INFO("Found connection to transfer. b2bcallid=%d | conn_state=%d | call_id=%s.\n", connections[i].id, connections[i].s,callID);
          LM_NOTICE("Found connection to transfer. b2bcallid=%d | conn_state=%d.\n", connections[i].id, connections[i].s);
          break;
       }
