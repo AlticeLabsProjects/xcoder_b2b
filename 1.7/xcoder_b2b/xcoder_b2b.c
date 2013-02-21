@@ -2167,6 +2167,17 @@ readline_A(struct sip_msg *msg, char * sdp, int * i, conn * connection, client *
             }
 
          }
+         else if (strcmp(type_temp, "ptime") == 0)
+         {
+            int len_to_end = count_length_to_end(sdp, begin); //Calculate number of characters until end of line(\r or \n or \0)
+            if (delete_b2b(msg, &(message[begin]), (len_to_end + 2)) != OK) //Delete characters until end of line (+2 means \r\n, the line termination)
+            {
+               LM_ERR("ERRO: Error while deleting in attribute line. Type %s | length %d | b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client state=%d | src_ip=%s | username=%s | error_code=%d\n",
+                     type_temp,len_to_end,connection->id,connection->s,connection->call_id,cli->id,cli->s,cli->src_ip,cli->user_name,PARSER_ERROR);
+               return PARSER_ERROR;
+            }
+
+         }
          move_to_end(sdp, &begin);
          pos = begin;
          break;
