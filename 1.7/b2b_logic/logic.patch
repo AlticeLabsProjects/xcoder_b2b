@@ -1,14 +1,19 @@
---- trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2013-02-20 18:22:03.380687830 +0000
-+++ b2b_logic/logic.c	2013-02-20 18:22:18.636687726 +0000
-@@ -2059,6 +2059,20 @@
+--- trunk/src/opensips_1_7/modules/b2b_logic/logic.c	2013-02-26 11:21:24.844687751 +0000
++++ b2b_logic/logic.c	2013-02-26 11:20:13.128502066 +0000
+@@ -2059,6 +2059,25 @@
  							replaces_b.to_tag_val.s,
  							replaces_b.from_tag_val.len,
  							replaces_b.from_tag_val.s);
 +               //JORGE BEGIN
-+               // Modification made to prevent b2b from dropping Refer messages with wrong Refer-To headers
++               // Modification made to prevent b2b from dropping Refer messages with wrong Refer-To headers (Jorge)
++
 +					LM_INFO("Wrong dialog values found in Refer. Relaying request\n");
 +               /* build extra headers */
-+               if(b2b_extra_headers(msg, NULL, NULL, &extra_headers)< 0)
++
++	            rt_header.s = msg->refer_to->name.s;
++	            rt_header.len = msg->refer_to->len;
++	            LM_INFO("Build extra header (REFER)\n");
++               if(b2b_extra_headers(msg, NULL, &rt_header, &extra_headers)< 0)
 +               {
 +                LM_ERR("Failed to construct extra headers\n");
 +                goto done;
@@ -21,7 +26,7 @@
  					goto done;
  				}
  				if(b2bl_parse_key(&tuple_key, &hash_idx,&local_idx)< 0)
-@@ -2619,6 +2633,33 @@
+@@ -2619,6 +2638,33 @@
  	LM_DBG("Gen from_tag= %s\n", fromtag_buf);
  }
  
@@ -55,7 +60,7 @@
  
  str* create_top_hiding_entities(struct sip_msg* msg, b2bl_cback_f cbf,
  		void* cb_param, unsigned int cb_mask, str* custom_hdrs)
-@@ -2813,6 +2854,74 @@
+@@ -2813,6 +2859,74 @@
  		b2bl_db_insert(tuple);
  	}
  
