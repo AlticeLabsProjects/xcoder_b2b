@@ -16,8 +16,10 @@
 
 # XCODER_B2B Makefile
 
-all : b2b_logic xcoder_b2b
+all : b2b_entities b2b_logic xcoder_b2b 
 xcoder_b2b:
 	cd opensips_1_7/;TLS=1 make modules=modules/xcoder_b2b modules;cd -
 b2b_logic:
 	cd opensips_1_7/;TLS=1 make modules=modules/b2b_logic modules;cd -
+b2b_entities:
+	cd opensips_1_7/;TLS=1 make modules=modules/b2b_entities modules;cd -
