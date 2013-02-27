@@ -723,6 +723,12 @@ match_payload(conn * connection, client * cli, char * chosen_payload)
             }
          }
          str_toUpper(cli->payloads[j].codec); // Put codec in uppercase
+         //Inserted exception for g729a, see issue WMS-731
+         if((strcmp(cli->payloads[j].codec, "G729A") == 0))
+         {
+            LM_INFO("Detected sdp codec name 'g729a', changing to g729\n");
+            sprintf(cli->payloads[j].codec, "%s", "G729");
+         }
          LM_INFO("Pos [%d]. Codec [%s] | Payload [%s]\n", j, cli->payloads[j].codec, cli->payloads[j].payload);
       }
    }
@@ -758,7 +764,6 @@ match_payload(conn * connection, client * cli, char * chosen_payload)
 
             LM_INFO("Compare. cli codec [%s] | surf codec [%s[\n", cli->payloads[i].codec, codecs[l].sdpname);
 
-            //TODO: Change to comprate . codec with  "telephone-event"
             if (codecs[l].is_empty == 1 && (strcmp(cli->payloads[i].codec, codecs[l].sdpname) == 0)
                   && (strcmp(cli->payloads[i].codec, "TELEPHONE-EVENT") != 0))
             {
