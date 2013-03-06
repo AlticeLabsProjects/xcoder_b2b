@@ -1,0 +1,18 @@
+--- trunk/src/opensips_1_8/modules/b2b_logic/b2b_logic.h	2013-03-06 15:14:26.976687849 +0000
++++ b2b_logic/b2b_logic.h	2013-03-06 18:24:13.364687805 +0000
+@@ -32,6 +32,7 @@
+ #include <libxml/parser.h>
+ #include "../../str.h"
+ #include "../b2b_entities/b2b_entities.h"
++#include "../xcoder_b2b/xcoder_b2b_load.h" //JORGE
+ 
+ #define B2B_INIT_MAX_PARAMNO     5
+ #define B2B_BRIDGING_STATE      -1
+@@ -52,6 +53,7 @@
+ #define HDR_DEFAULT_LEN   8
+ 
+ extern b2b_api_t b2b_api;
++struct xcoder_binds b2b_xcoder; //JORGE
+ 
+ enum b2bl_caller_type {
+ 	CALLER_MODULE,
