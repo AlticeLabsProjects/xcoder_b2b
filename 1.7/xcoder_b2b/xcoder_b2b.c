@@ -3443,10 +3443,10 @@ parse_200OK(struct sip_msg *msg)
         LM_ERR("Error: Null destination client. Cannot send error reply. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | error_code=%d\n",
               connection->id,connection->s,callID,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, GENERAL_ERROR);
       }
-      if(strcmp(connections->call_id, callID)==0)
-         send_reply_b2b(callID, cli_dst->b2b_tag,cli->tag, connections->b2b_client_serverID, B2B_CLIENT, METHOD_INVITE, 606, "Not Acceptable");
-      else if(strcmp(connections->b2b_client_callID, callID) == 0)
-         send_reply_b2b(connections->call_id, cli_dst->tag,cli->b2b_tag, connections->b2b_client_serverID, B2B_SERVER, METHOD_INVITE, 606, "Not Acceptable");
+      if(strcmp(connection->call_id, callID)==0)
+         send_reply_b2b(callID, cli_dst->b2b_tag,cli->tag, connection->b2b_client_serverID, B2B_CLIENT, METHOD_INVITE, 606, "Not Acceptable");
+      else if(strcmp(connection->b2b_client_callID, callID) == 0)
+         send_reply_b2b(connection->call_id, cli_dst->tag,cli->b2b_tag, connection->b2b_client_serverID, B2B_SERVER, METHOD_INVITE, 606, "Not Acceptable");
       else
          LM_ERR("Can not math callid to send error reply. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | error_code=%d\n",
                connection->id,connection->s,callID,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, GENERAL_ERROR);
