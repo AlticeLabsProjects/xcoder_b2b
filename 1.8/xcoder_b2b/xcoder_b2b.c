@@ -3362,6 +3362,12 @@ parse_200OK(struct sip_msg *msg)
                      LM_INFO("Parse in dialog 200OK.Putting call on/off hold. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
                     		 connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
+                     if(status!=OK)
+                     {
+                        LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
+                              connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
+                        cancel_connection(&(connections[i]));
+                     }
                      return status;
                   }
                   else if (connections[i].s == REINVITE && cli_dst->s == PENDING_INVITE)
@@ -3369,6 +3375,12 @@ parse_200OK(struct sip_msg *msg)
                      LM_NOTICE("Parse in dialog 200OK. b2bcallid=%d | client_id=%d | username=%s\n",
                     		 connections[i].id, cli->id,cli->user_name);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
+                     if(status!=OK)
+                     {
+                        LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
+                              connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
+                        cancel_connection(&(connections[i]));
+                     }
                      return status;
 
                   }
@@ -3377,6 +3389,12 @@ parse_200OK(struct sip_msg *msg)
                      LM_NOTICE("Parse 200OK after early media. b2bcallid=%d | client_id=%d | username=%s\n",
                     		 connections[i].id, cli->id,cli->user_name);
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
+                     if(status!=OK)
+                     {
+                        LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
+                              connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
+                        cancel_connection(&(connections[i]));
+                     }
                      return status;
                   }
 
@@ -3463,6 +3481,21 @@ parse_200OK(struct sip_msg *msg)
    {
       LM_ERR("ERROR: Error parsing sip message. b2bcallid=id %d | conn_state=%d | call_id=%s | client_id=%d | client state=%d\n", connection->id,connection->s,connection->call_id,cli->id,cli->s);
       send_remove_to_xcoder(connection); //Xcoder will free ports for both clients.
+      //Send error reply to caller
+      cli_dst = NULL;
+      get_client(connection, cli, &cli_dst); //Get destination client
+      if (cli_dst == NULL)
+      {
+        LM_ERR("Error: Null destination client. Cannot send error reply. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | error_code=%d\n",
+              connection->id,connection->s,callID,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, GENERAL_ERROR);
+      }
+      if(strcmp(connection->call_id, callID)==0)
+         send_reply_b2b(callID, cli_dst->b2b_tag,cli->tag, connection->b2b_client_serverID, B2B_CLIENT, METHOD_INVITE, 606, "Not Acceptable");
+      else if(strcmp(connection->b2b_client_callID, callID) == 0)
+         send_reply_b2b(connection->call_id, cli_dst->tag,cli->b2b_tag, connection->b2b_client_serverID, B2B_SERVER, METHOD_INVITE, 606, "Not Acceptable");
+      else
+         LM_ERR("Can not math callid to send error reply. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | error_code=%d\n",
+               connection->id,connection->s,callID,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, GENERAL_ERROR);
 
       switch (status)
       {
