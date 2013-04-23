@@ -214,7 +214,7 @@ add_xcoder_b2b_UnsupportedMethods_info(int * eventtype,int * probablecause,const
 int
 add_xcoder_b2b_LowMemory_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send low memory trap\n");
+   LM_NOTICE("Configuring to send low memory trap. Severity %d | trap_id %d \n",severity,TRAP_LOW_FREE_MEMORY);
    *eventtype=6;
    *probablecause=32; //x733OutofMemory
    Xsnprintf(traptext,255,"Low memory");
@@ -248,8 +248,7 @@ add_xcoder_b2b_LowMemory_info(int * eventtype,int * probablecause,const int seve
 int
 add_xcoder_b2b_maxCalls_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send max transcoding calls trap\n");
-   *eventtype=5;
+   LM_NOTICE("Configuring to send max transcoding calls trap. Severity %d | trap_id %d \n",severity,TRAP_MAX_ACTIVE_CALLS);
    *probablecause=43; //x733ResourceAtOrNearingCapacity
    Xsnprintf(traptext,255,"Max transcoder calls");
    Xsnprintf(objectClassStr,64,"xcoder_b2b");
@@ -282,7 +281,7 @@ add_xcoder_b2b_maxCalls_info(int * eventtype,int * probablecause,const int sever
 int
 add_xcoder_b2b_parseRequest_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send parse request error trap\n");
+   LM_NOTICE("Configuring to send parse request error trap. Severity %d | trap_id %d \n",severity,TRAP_PARSE_REQUEST);
    *eventtype=6;
    *probablecause=46; //x733SoftwareError
    Xsnprintf(traptext,255,"Parse request error");
@@ -316,7 +315,7 @@ add_xcoder_b2b_parseRequest_info(int * eventtype,int * probablecause,const int s
 int
 add_xcoder_b2b_parseReply_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send parse reply error trap\n");
+   LM_NOTICE("Configuring to send parse reply error trap. Severity %d | trap_id %d \n",severity,TRAP_PARSE_RESPONSE);
    *eventtype=6;
    *probablecause=46; //x733SoftwareError
    Xsnprintf(traptext,255,"Parse reply error");
@@ -350,7 +349,7 @@ add_xcoder_b2b_parseReply_info(int * eventtype,int * probablecause,const int sev
 int
 add_xcoder_b2b_getPorts_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send get ports error trap\n");
+   LM_NOTICE("Configuring to send get ports error trap. Severity %d | trap_id %d \n",severity,TRAP_XCODER_PORTS);
    *eventtype=2;
    *probablecause=100; //x733UnderlyingResourcesUnavailable
    Xsnprintf(traptext,255,"Get ports error");
@@ -384,7 +383,7 @@ add_xcoder_b2b_getPorts_info(int * eventtype,int * probablecause,const int sever
 int
 add_xcoder_b2b_createCall_info(int * eventtype,int * probablecause,const int severity,char * objectClassStr,char * objectInstanceStr,char * traptext,int * trap_id,char * specifictext,int * alarm_id,int * ack)
 {
-   LM_NOTICE("Configuring to send get ports error trap\n");
+   LM_NOTICE("Configuring to send get ports error trap. Severity %d | trap_id %d \n",severity,TRAP_XCODER_CREATE_CALL);
    *eventtype=2;
    *probablecause=100; //x733UnderlyingResourcesUnavailable
    Xsnprintf(traptext,255,"Create call error");
@@ -609,7 +608,7 @@ int check_transcoder_calls_alarm(int threshold_to_compare_to)
    }
 
    active_calls = b2b_xcoder.get_transcoder_calls();
-   LM_NOTICE("\n\n active_calls = %d \n\n",active_calls);
+   LM_INFO("Active_calls = %d\n",active_calls);
 
    if (active_calls > threshold_to_compare_to)
    {
