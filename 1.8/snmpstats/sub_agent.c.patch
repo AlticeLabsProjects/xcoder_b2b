@@ -1,0 +1,41 @@
+--- trunk/src/opensips_1_8/modules/snmpstats/sub_agent.c	2013-04-23 17:33:49.988937417 +0100
++++ sub_agent.c	2013-04-23 17:48:40.836437678 +0100
+@@ -36,13 +36,20 @@
+ 
+ #include "../../dprint.h"
+ 
++#include "snmp_xcoder_b2b_traps.h" //JORGE
++
+ static int keep_running;
+ 
+ /* The function handles Handles shutting down of the sub_agent process. */
+ static void sigterm_handler(int signal) 
+ {
+ 	/* Just exit.  The master agent will clean everything up for us */
+-	exit(0);
++   //BEGIN JORGE
++   LM_NOTICE("Send shutdown trap in sigchld_handler\n");
++   agent_check_and_process(0);
++   GenerateTrap(TRAP_SERVICE_DOWN,1);
++   //END JORGE
++   exit(0);
+ }
+ 
+ /* This function:
+@@ -81,6 +88,16 @@
+ 	init_openserSIPContactTable();
+ 	init_openserSIPRegUserLookupTable();
+ 
++//   Jorge, send initialization traps
++   GenerateTrap(TRAP_SERVICE_DOWN,5);
++   GenerateTrap(TRAP_LOW_FREE_MEMORY,5);
++   GenerateTrap(TRAP_UNSUPPORTED_METHODS,5);
++   GenerateTrap(TRAP_MAX_ACTIVE_CALLS,5);
++   GenerateTrap(TRAP_PARSE_REQUEST,5);
++   GenerateTrap(TRAP_PARSE_RESPONSE,5);
++   GenerateTrap(TRAP_XCODER_PORTS,5);
++   GenerateTrap(TRAP_XCODER_CREATE_CALL,5);
++
+ 	/* In case we recevie a request to stop (kill -TERM or kill -INT) */
+ 	keep_running = 1;
+ 

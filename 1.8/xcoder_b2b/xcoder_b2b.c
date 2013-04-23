@@ -1,5 +1,6 @@
 #include "xcoder_b2b.h"
 #include "xcoder_b2b_load.h"
+#include "xcoder_b2b_traps.h"
 
 /********************************************************************************
  *
@@ -98,6 +99,11 @@ load_xcoder(struct xcoder_binds *xcoder)
 {
    xcoder->add_b2b_callID = add_b2b_callID;
    xcoder->free_xcoder_resources = free_xcoder_resources;
+   xcoder->get_create_call_err = get_create_call_err;
+   xcoder->get_parse_req_err = get_parse_req_err;
+   xcoder->get_parse_resp_err = get_parse_resp_err;
+   xcoder->get_transcoder_calls = get_transcoder_calls;
+   xcoder->get_xcoder_ports_err = get_xcoder_ports_err;
    return 1;
 }
 
@@ -1632,6 +1638,7 @@ get_port_b2b(client * cli, char * port)
    if (status != OK)
    {
       LM_NOTICE("Error interacting with xcoder.\n");
+      increment_counter(xcoder_ports_err, 1);
       return status;
    }
 
@@ -3163,6 +3170,7 @@ parse_183(struct sip_msg *msg)
     		  connection->id,connection->s,connection->call_id,cli->id,cli->s,status);
 
       send_remove_to_xcoder(connection);
+      increment_counter(create_call_err, 1);
       switch (status)
       {
          case XCODER_CMD_ERROR:
@@ -3190,6 +3198,7 @@ parse_183(struct sip_msg *msg)
 
    cli->s = EARLY_MEDIA_C;
    connection->s = EARLY_MEDIA;
+   increment_counter(transcoder_calls, 1); //Increments transcoder_calls counter
 
    return OK;
 
@@ -3206,19 +3215,6 @@ parse_200OK(struct sip_msg *msg)
 {
    LM_INFO("Parse 200OK\n");
 
-   /*typedef struct b2b_rpl_data
-    {
-    enum b2b_entity_type et;
-    str* b2b_key;
-    int method;
-    int code;
-    str* text;
-    str* body;
-    str* extra_headers;
-    b2b_dlginfo_t* dlginfo;
-    }b2b_rpl_data_t;*/
-
-   //rpl_data.method =METHOD_BYE;
    int status = OK; //Holds the status of the operation
    int i = 0;
    conn * connection = NULL;
@@ -3364,9 +3360,11 @@ parse_200OK(struct sip_msg *msg)
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      if(status!=OK)
                      {
+                        increment_counter(parse_resp_err, 1); // Increment error counter
                         LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
                               connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
                         cancel_connection(&(connections[i]));
+                        decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
                      }
                      return status;
                   }
@@ -3377,9 +3375,11 @@ parse_200OK(struct sip_msg *msg)
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      if(status!=OK)
                      {
+                        increment_counter(parse_resp_err, 1); // Increment error counter
                         LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
                               connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
                         cancel_connection(&(connections[i]));
+                        decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
                      }
                      return status;
 
@@ -3391,9 +3391,11 @@ parse_200OK(struct sip_msg *msg)
                      status = parse_inDialog_200OK(msg, &message, &(connections[i]), cli);
                      if(status!=OK)
                      {
+                        increment_counter(parse_resp_err, 1); // Increment error counter
                         LM_ERR("ERROR: Error parsing 200OK sip message. b2bcallid=%d | client_id=%d | username=%s | cli_state=%d | cli_dst_state=%d\n",
                               connections[i].id, cli->id,cli->user_name, cli->s, cli_dst->s);
                         cancel_connection(&(connections[i]));
+                        decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
                      }
                      return status;
                   }
@@ -3497,6 +3499,7 @@ parse_200OK(struct sip_msg *msg)
          LM_ERR("Can not math callid to send error reply. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | error_code=%d\n",
                connection->id,connection->s,callID,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, GENERAL_ERROR);
 
+      increment_counter(parse_resp_err, 1); // Increment error counter
       switch (status)
       {
          case XCODER_CMD_ERROR:
@@ -3742,6 +3745,7 @@ parse_inDialog_invite(struct sip_msg *msg)
       connection->s=conn_original_state;
       cli->s = caller_original_state;
       cli_dst->s = callee_original_state;
+      increment_counter(parse_req_err, 1); // Increment error counter
       switch (status)
       {
          case XCODER_CMD_ERROR:
@@ -4003,6 +4007,7 @@ parse_invite(struct sip_msg *msg)
       int b2bcallid=connection->id;
       free_ports_client(&(connection->clients[0]));
       clean_connection(connection);
+      increment_counter(parse_req_err, 1); // Increment error counter
       switch (status)
       {
          case XCODER_CMD_ERROR:
@@ -4332,6 +4337,7 @@ parse_bye(struct sip_msg* msg)
          LM_INFO("Cleaning connection. b2bcallid=%d\n", connections[i].id);
          send_remove_to_xcoder(&(connections[i]));
          clean_connection(&(connections[i])); //Clean connetions that receives a bye
+         decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
          break;
       }
    }
@@ -4809,6 +4815,8 @@ parse_ACK(struct sip_msg* msg)
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
+                  decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
+
                   i = MAX_CONNECTIONS; // Leave the cycle
                   c = MAX_CLIENTS; // Leave the cycle
                }
@@ -4819,6 +4827,7 @@ parse_ACK(struct sip_msg* msg)
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
+                  decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
 
                   i = MAX_CONNECTIONS; // To leave the cycle
                   c = MAX_CLIENTS;
@@ -4830,6 +4839,7 @@ parse_ACK(struct sip_msg* msg)
                                   		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
+                  decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
 
                   i = MAX_CONNECTIONS; // To leave the cicle
                   c = MAX_CLIENTS;
@@ -4841,6 +4851,7 @@ parse_ACK(struct sip_msg* msg)
                 		  connection->id,connection->s,connection->call_id,connection->b2b_client_callID,caller->id,caller->s,caller->tag,caller->user_name,caller->dst_audio, cli_dst->dst_audio);
                   sprintf(connection->cseq, cseq_call); // Update cseq header
                   send_remove_to_xcoder(connection); // Send remove to xcoder
+                  decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
 
                   i = MAX_CONNECTIONS; // To leave the cicle
                   c = MAX_CLIENTS;
@@ -4901,6 +4912,7 @@ parse_ACK(struct sip_msg* msg)
 
       free_ports_client(caller);
       free_ports_client(cli_dst);
+      increment_counter(create_call_err, 1); //Increments error counter
 
       switch (caller->s)
       {
@@ -4990,6 +5002,7 @@ parse_ACK(struct sip_msg* msg)
    connection->s = ACTIVE;
    LM_INFO("Call info. b2bcallid=%d | conn_state=%d | caller_id=%d | caller_state=%d | callee_id=%d | callee_state=%d\n",
        		  connection->id,connection->s,caller->id,caller->s,cli_dst->id,cli_dst->s);
+   increment_counter(transcoder_calls, 1); //Increments transcoder_calls counter
 
    return OK;
 }
@@ -5115,7 +5128,8 @@ static int check_overtime_conns(void)
 					break;
 
 					case EARLY_MEDIA :
-					case ACTIVE :
+					case ACTIVE : decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter, No break needed
+					/* no break */
 					case REINVITE :
 					default :
 					{
@@ -5288,6 +5302,29 @@ mod_init(void)
       return INIT_ERROR;
    }
 
+   trap_lock = lock_alloc();
+   if (lock_init(trap_lock) == 0)
+   {
+      LM_ERR("could not initialize a trap_lock\n");
+      lock_dealloc(trap_lock);
+      return INIT_ERROR;
+   }
+
+   parse_req_err = shm_malloc(sizeof(int));
+   *parse_req_err=0;
+
+   parse_resp_err = shm_malloc(sizeof(int));
+   *parse_resp_err=0;
+
+   xcoder_ports_err = shm_malloc(sizeof(int));
+   *xcoder_ports_err=0;
+
+   create_call_err = shm_malloc(sizeof(int));
+   *create_call_err = 0;
+
+   transcoder_calls = shm_malloc(sizeof(int));
+   *transcoder_calls = 0;
+
    message_count = shm_malloc(sizeof(int));
    *message_count = 1;
 
@@ -5423,6 +5460,26 @@ mod_destroy(void)
 	   memset(fd_socket_list, 0, sizeof(fd_socket_list));
 	   shm_free(fd_socket_list);
    }
+   if(parse_req_err!=NULL)
+   {
+      memset(parse_req_err, 0, sizeof(parse_req_err));
+      shm_free(parse_req_err);
+   }
+   if(parse_resp_err!=NULL)
+   {
+      memset(parse_resp_err, 0, sizeof(parse_resp_err));
+      shm_free(parse_resp_err);
+   }
+   if(xcoder_ports_err!=NULL)
+   {
+      memset(xcoder_ports_err, 0, sizeof(xcoder_ports_err));
+      shm_free(xcoder_ports_err);
+   }
+   if(create_call_err!=NULL)
+   {
+      memset(create_call_err, 0, sizeof(create_call_err));
+      shm_free(create_call_err);
+   }
    if(message_count!=NULL)
    {
 	   memset(message_count, 0, sizeof(message_count));
@@ -5430,22 +5487,22 @@ mod_destroy(void)
    }
    if(conn_last_empty!=NULL)
    {
-	   memset(message_count, 0, sizeof(conn_last_empty));
+	   memset(conn_last_empty, 0, sizeof(conn_last_empty));
 	   shm_free(conn_last_empty);
    }
    if(socket_last_empty!=NULL)
    {
-	   memset(message_count, 0, sizeof(socket_last_empty));
+	   memset(socket_last_empty, 0, sizeof(socket_last_empty));
 	   shm_free(socket_last_empty);
    }
    if(media_relay!=NULL)
    {
-	   memset(message_count, 0, sizeof(media_relay));
+	   memset(media_relay, 0, sizeof(media_relay));
 	   shm_free(media_relay);
    }
    if(g_connection_timeout!=NULL)
    {
-	   memset(message_count, 0, sizeof(g_connection_timeout));
+	   memset(g_connection_timeout, 0, sizeof(g_connection_timeout));
 	   shm_free(g_connection_timeout);
    }
    if(codecs!=NULL)

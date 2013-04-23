@@ -1,0 +1,172 @@
+--- trunk/src/opensips_1_8/modules/snmpstats/snmpstats.c	2013-04-23 17:33:50.080937695 +0100
++++ snmpstats.c	2013-04-23 17:48:27.116437910 +0100
+@@ -79,6 +79,8 @@
+ #include "utilities.h"
+ #include "sub_agent.h"
+ 
++#include "snmp_xcoder_b2b_traps.h" //JORGE
++
+ /* Required in every OpenSIPS Module. */
+ 
+ 
+@@ -216,7 +218,6 @@
+ static int mod_init(void) 
+ {
+ 	LM_INFO("Starting up the SNMPStats Module\n");
+-
+ 	if (register_message_code_statistics() < 0) 
+ 	{
+ 		return -1;
+@@ -251,7 +252,62 @@
+ 
+ 	
+ 	/* Register the alarm checking function to run periodically */
+-	register_timer(run_alarm_check, 0, ALARM_AGENT_FREQUENCY_IN_SECONDS);
++	//Begin Jorge
++//	register_timer(run_alarm_check, 0, ALARM_AGENT_FREQUENCY_IN_SECONDS);
++	int alarm_freq;
++	alarm_freq = get_alarm_freq();
++	register_timer(run_alarm_check, 0, alarm_freq);
++
++	trap_number = shm_malloc(sizeof(int));
++   *trap_number = 1;
++   last_unsupported_methods = shm_malloc(sizeof(int));
++   *last_unsupported_methods = 0;
++   last_parse_req = shm_malloc(sizeof(int));
++   *last_parse_req=0;
++   last_parse_resp = shm_malloc(sizeof(int));
++   *last_parse_resp=0;
++   last_xcoder_ports = shm_malloc(sizeof(int));
++   *last_xcoder_ports=0;
++   last_create_call = shm_malloc(sizeof(int));
++   *last_create_call=0;
++
++   unsup_method_trap_state = shm_malloc(sizeof(int));
++   *unsup_method_trap_state = SERVICE_OK;
++   low_memory_trap_state = shm_malloc(sizeof(int));
++   *low_memory_trap_state = SERVICE_OK;
++   max_calls_trap_state=shm_malloc(sizeof(int));
++   *max_calls_trap_state= SERVICE_OK;
++   parse_req_trap_state=shm_malloc(sizeof(int));
++   *parse_req_trap_state= SERVICE_OK;
++   parse_resp_trap_state=shm_malloc(sizeof(int));
++   *parse_resp_trap_state= SERVICE_OK;
++   xcoder_ports_trap_state=shm_malloc(sizeof(int));
++   *xcoder_ports_trap_state= SERVICE_OK;
++   create_call_trap_state=shm_malloc(sizeof(int));
++   *create_call_trap_state= SERVICE_OK;
++
++   update_trap_values_lock = lock_alloc();
++   if (lock_init(update_trap_values_lock) == 0)
++   {
++      LM_ERR("could not initialize the update trap values lock\n");
++      lock_dealloc(update_trap_values_lock);
++      return -1;
++   }
++
++   trap_lock = lock_alloc();
++   if (lock_init(trap_lock) == 0)
++   {
++      LM_ERR("could not initialize a trap_lock\n");
++      lock_dealloc(trap_lock);
++      return -1;
++   }
++
++   /* load xcoder_b2b_entities api */
++   if(load_xcoder_api(&b2b_xcoder)< 0) {
++      LM_ERR("can't load b2b_xcoder functions\n");
++      return -1;
++   }
++   // End Jorge
+ 
+ 	return 0;
+ }
+@@ -282,6 +338,88 @@
+ 	
+     freeInterprocessBuffer();
+ 
++    //Jorge begin
++    if(trap_number!=NULL)
++    {
++       memset(trap_number, 0, sizeof(trap_number));
++       shm_free(trap_number);
++    }
++
++    if(last_unsupported_methods!=NULL)
++    {
++       memset(last_unsupported_methods, 0, sizeof(last_unsupported_methods));
++       shm_free(last_unsupported_methods);
++    }
++
++    if(last_parse_req!=NULL)
++    {
++       memset(last_parse_req, 0, sizeof(last_parse_req));
++       shm_free(last_parse_req);
++    }
++
++    if(last_parse_resp!=NULL)
++    {
++       memset(last_parse_resp, 0, sizeof(last_parse_resp));
++       shm_free(last_parse_resp);
++    }
++
++    if(last_xcoder_ports!=NULL)
++    {
++       memset(last_xcoder_ports, 0, sizeof(last_xcoder_ports));
++       shm_free(last_xcoder_ports);
++    }
++
++    if(last_create_call!=NULL)
++    {
++       memset(last_create_call, 0, sizeof(last_create_call));
++       shm_free(last_create_call);
++    }
++
++    if(unsup_method_trap_state!=NULL)
++    {
++       memset(unsup_method_trap_state, 0, sizeof(unsup_method_trap_state));
++       shm_free(unsup_method_trap_state);
++    }
++
++    if(low_memory_trap_state!=NULL)
++    {
++       memset(low_memory_trap_state, 0, sizeof(low_memory_trap_state));
++       shm_free(low_memory_trap_state);
++    }
++
++
++    if(max_calls_trap_state!=NULL)
++    {
++       memset(max_calls_trap_state, 0, sizeof(max_calls_trap_state));
++       shm_free(max_calls_trap_state);
++    }
++
++    if(parse_req_trap_state!=NULL)
++    {
++       memset(parse_req_trap_state, 0, sizeof(parse_req_trap_state));
++       shm_free(parse_req_trap_state);
++    }
++
++    if(parse_resp_trap_state!=NULL)
++    {
++       memset(parse_resp_trap_state, 0, sizeof(parse_resp_trap_state));
++       shm_free(parse_resp_trap_state);
++    }
++
++    if(xcoder_ports_trap_state!=NULL)
++    {
++       memset(xcoder_ports_trap_state, 0, sizeof(xcoder_ports_trap_state));
++       shm_free(xcoder_ports_trap_state);
++    }
++
++    if(create_call_trap_state!=NULL)
++    {
++       memset(create_call_trap_state, 0, sizeof(create_call_trap_state));
++       shm_free(create_call_trap_state);
++    }
++
++    //Jorge End
++
+     LM_INFO("                 Shutting down the AgentX Sub-Agent!\n");
+ }
+ 
