@@ -50,7 +50,7 @@
 +
 +	//Jorge
 +
-+	LM_NOTICE("Check for alarm conditions\n");
++	LM_INFO("Check for alarm conditions\n");
 +
 +	int free_memory;
 +	int unsupported_methods;
@@ -170,7 +170,7 @@
 +   }
 +   update_value(b2b_xcoder.get_create_call_err(),TRAP_XCODER_CREATE_CALL);
 +
-+   LM_NOTICE("End check for alarm conditions\n");
++   LM_INFO("End check for alarm conditions\n");
 +
 +	//End Jorge
  }

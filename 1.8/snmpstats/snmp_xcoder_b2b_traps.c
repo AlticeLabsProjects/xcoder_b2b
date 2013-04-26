@@ -736,7 +736,8 @@ int check_create_call_alarm(int threshold_to_compare_to)
    LM_INFO("xcoder_b2b_create_call_errors = %d\n",xcoder_b2b_create_call_errors);
    last_create_call_errors = get_last_create_call();
 
-   if( (xcoder_b2b_create_call_errors - last_create_call_errors) > threshold_to_compare_to)
+   //This clause is >= to allow trigger if equal to 1, because is a sensitive and important alarm.
+   if( (xcoder_b2b_create_call_errors - last_create_call_errors) >= threshold_to_compare_to)
    {
       return (xcoder_b2b_create_call_errors - last_create_call_errors);
    }
