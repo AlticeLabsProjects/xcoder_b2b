@@ -1,0 +1,89 @@
+--- opensips-1.8.2-tls/dprint.h	2013-01-16 13:07:27.000000000 +0000
++++ dprint.h	2013-06-06 09:51:02.548437768 +0100
+@@ -69,13 +69,13 @@
+ 	#define DP_PREFIX  "%s [%d] "
+ #endif
+ 
+-#define DP_ALERT_TEXT    "ALERT:"
+-#define DP_CRIT_TEXT     "CRITICAL:"
+-#define DP_ERR_TEXT      "ERROR:"
+-#define DP_WARN_TEXT     "WARNING:"
+-#define DP_NOTICE_TEXT   "NOTICE:"
+-#define DP_INFO_TEXT     "INFO:"
+-#define DP_DBG_TEXT      "DBG:"
++#define DP_ALERT_TEXT    "ALERT "
++#define DP_CRIT_TEXT     "CRI "
++#define DP_ERR_TEXT      "ERR "
++#define DP_WARN_TEXT     "WRN "
++#define DP_NOTICE_TEXT   "NTC "
++#define DP_INFO_TEXT     "INF "
++#define DP_DBG_TEXT      "DBG "
+ 
+ #define DP_ALERT_PREFIX  DP_PREFIX DP_ALERT_TEXT
+ #define DP_CRIT_PREFIX   DP_PREFIX DP_CRIT_TEXT
+@@ -106,7 +106,7 @@
+ extern int log_facility;
+ extern char* log_name;
+ extern char ctime_buf[];
+-
++extern int log_xcoder_b2b_mode; //If 1, it will enable xcoder_b2b log format
+ 
+ int dp_my_pid(void);
+ 
+@@ -177,11 +177,20 @@
+ 		#define LOG_PREFIX  MOD_NAME ": "
+ 
+ 		#define MY_DPRINT( ...) \
+-				dprint( LOG_PREFIX __VA_ARGS__ ) \
++         if (log_xcoder_b2b_mode)\
++            dprint( LOG_PTIN_PREFIX __VA_ARGS__ ) \
++         else \
++            dprint( LOG_PREFIX __VA_ARGS__ ) \
++
+ 
+ 		#define MY_SYSLOG( _log_level, ...) \
+-				syslog( (_log_level)|log_facility, \
+-							LOG_PREFIX __VA_ARGS__);\
++         if (log_xcoder_b2b_mode)\
++            syslog( (_log_level)|log_facility, \
++               _prefix MOD_NAME "   %d: " "[%s] " _fmt, dp_my_pid(), __DP_FUNC, ## args);\
++         else \
++            syslog( (_log_level)|log_facility, \
++            		LOG_PREFIX __VA_ARGS__);\
++
+ 
+ 		#define LM_GEN1(_lev, ...) \
+ 			LM_GEN2( log_facility, _lev, __VA_ARGS__)
+@@ -296,13 +305,28 @@
+ 
+ 		#define LOG_PREFIX  MOD_NAME ":%s: "
+ 
+-		#define MY_DPRINT( _prefix, _fmt, args...) \
+-				dprint( _prefix LOG_PREFIX _fmt, dp_time(), \
+-					dp_my_pid(), __DP_FUNC, ## args) \
++      #define MY_DPRINT( _prefix, _fmt, args...) \
++                dprint( _prefix LOG_PREFIX _fmt, dp_time(), \
++                        dp_my_pid(), __DP_FUNC, ## args) \
++
++      /*#define MY_DPRINT( _prefix, _fmt, args...) \
++      do { \
++         if (log_xcoder_b2b_mode){ \
++            dprint( _prefix MOD_NAME " [%s] " _fmt, dp_time(), dp_my_pid(), __DP_FUNC, ## args); \
++         } \
++         else { \
++            dprint( _prefix LOG_PREFIX _fmt, dp_time(), dp_my_pid(), __DP_FUNC, ## args); \
++         } \
++      }while(0)*/
+ 
+ 		#define MY_SYSLOG( _log_level, _prefix, _fmt, args...) \
++		   if (log_xcoder_b2b_mode){ \
+ 				syslog( (_log_level)|log_facility, \
+-							_prefix LOG_PREFIX _fmt, __DP_FUNC, ##args);\
++						_prefix MOD_NAME "   %d: " "[%s] " _fmt, dp_my_pid(), __DP_FUNC, ## args);\
++		   } \
++		   else\
++			   syslog( (_log_level)|log_facility, \
++					   _prefix LOG_PREFIX _fmt, __DP_FUNC, ##args);
+ 
+ 		#define LM_GEN1(_lev, args...) \
+ 			LM_GEN2( log_facility, _lev, ##args)

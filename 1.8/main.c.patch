@@ -1,0 +1,39 @@
+--- opensips-1.8.2-tls/main.c	2013-01-16 13:07:27.000000000 +0000
++++ main.c	2013-06-06 09:51:07.084437633 +0100
+@@ -254,6 +254,9 @@
+ int disable_core_dump=0; /* by default enabled */
+ int open_files_limit=-1; /* don't touch it by default */
+ 
++/* Change log format of opensips */
++int log_xcoder_b2b_mode = 0;  //If 1, it will enable xcoder_b2b log format. Default is 0
++
+ #ifdef USE_MCAST
+ int mcast_loopback = 0;
+ int mcast_ttl = -1; /* if -1, don't touch it, use the default (usually 1) */
+@@ -1052,7 +1055,7 @@
+ 
+ 	/* process pkg mem size from command line */
+ 	opterr=0;
+-	options="f:cCm:M:b:l:n:N:rRvdDETSVhw:t:u:g:P:G:W:o:";
++	options="f:cCm:x:M:b:l:n:N:rRvdDETSVhw:t:u:g:P:G:W:o:";
+ 
+ 	while((c=getopt(argc,argv,options))!=-1){
+ 		switch(c){
+@@ -1095,6 +1098,17 @@
+ 					};
+ 
+ 					break;
++         case 'x':
++         {
++               log_xcoder_b2b_mode=strtol(optarg, &tmp, 10);
++               if (log_xcoder_b2b_mode!=1)
++               {
++                  log_xcoder_b2b_mode=0;
++                  LM_ERR("bad value to enable log_xcoder_b2b_mode param: -x %s\n", optarg);
++                  goto error00;
++               }
++               break;
++         }
+ 			case 'M':
+ 					/* ignoring it, parsed previously */
+ 
