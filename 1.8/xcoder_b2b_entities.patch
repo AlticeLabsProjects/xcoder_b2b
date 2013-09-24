@@ -1,11 +1,85 @@
-diff -Naur opensips-1.8.2-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
---- opensips-1.8.2-tls/modules/b2b_entities/dlg.c	2013-01-16 13:08:18.000000000 +0000
-+++ b2b_entities/dlg.c	2013-04-26 16:41:29.324937834 +0100
-@@ -847,6 +847,106 @@
+diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
+--- opensips-1.8.3-tls/modules/b2b_entities/dlg.c	2013-01-28 15:56:15.000000000 +0000
++++ b2b_entities/dlg.c	2013-09-24 11:06:56.859637033 +0100
+@@ -852,6 +852,180 @@
  		}
  	}
  
-+   // Begin Jorge modifications, check if a reinvite has fax attributes
++   /* Begin Jorge modifications
++    * Check max-forwards header
++    * Check if a reinvite has fax attributes
++    * */
++
++	str foo;
++	int x=255, err;
++	if  (msg->maxforwards && parse_headers( msg , HDR_MAXFORWARDS_F, 0 )==-1 )
++	{
++		LM_ERR("Parsing MAX_FORWARD header failed!\n");
++	}
++	if(msg->maxforwards)
++	{
++		trim_len( foo.len , foo.s , msg->maxforwards->body );
++		x = str2s( foo.s,foo.len,&err);
++		if (err)
++		{
++			LM_ERR("unable to parse the max forwards number\n");
++		}
++		else
++		{
++			if(x<=0)
++			{
++				if(method_value==METHOD_ACK)
++				{
++					LM_WARN("Detected Max-forwards=%d in ACK message. Discarding message\n",x);
++					lock_release(&table[hash_index].lock);
++					goto done;
++				}
++
++				LM_WARN("Detected Max-forwards=%d | message = %s. Sending 483 Too Many Hops error response\n",x,msg->buf);
++	            str reason={"Too Many Hops", 13};
++
++	            b2b_rpl_data_t rpl_data;
++	            b2b_dlginfo_t dlginfo;
++	            memset(&rpl_data, 0, sizeof(b2b_rpl_data_t));
++	            memset(&dlginfo,0, sizeof(b2b_dlginfo_t));
++
++	            etype = (table==server_htable?B2B_SERVER:B2B_CLIENT);
++
++	            if(etype==B2B_SERVER)
++	            {
++	               dlginfo.callid = dlg->callid;
++	               dlginfo.fromtag = dlg->tag[CALLER_LEG];
++	               dlginfo.totag = to_tag;
++	            }
++	            else
++	            {
++	               dlginfo.callid = dlg->callid;
++	               dlginfo.fromtag = dlg->tag[CALLEE_LEG];
++	               dlginfo.totag = to_tag;
++	            }
++
++	            rpl_data.et=etype;
++	            rpl_data.b2b_key=&b2b_key;
++	            rpl_data.method =method_value;
++	            rpl_data.code = 483;
++	            rpl_data.text=&reason;
++	            rpl_data.dlginfo=&dlginfo;
++
++	            lock_release(&table[hash_index].lock);
++	            b2b_send_reply(&rpl_data);
++
++	            lock_release(&table[hash_index].lock);
++
++	            goto done;
++			}
++		}
++	}
++	else
++	{
++		LM_DBG("No Max-header found\n");
++	}
++
++
 +   if(dlg->fax_status==FAX_ERR_SENDED && method_value == METHOD_ACK)
 +   {
 +      LM_NOTICE("Found ACK in response of an error due to fax attributes. Exit b2b_modules, call_id=%.*s",callid.len,callid.s);
@@ -108,7 +182,7 @@ diff -Naur opensips-1.8.2-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	b2b_cback = dlg->b2b_cback;
  	if(dlg->param.s)
  	{
-@@ -1275,8 +1375,9 @@
+@@ -1280,8 +1454,9 @@
  	LM_DBG("Send reply %d %.*s, for dlg [%p]->[%.*s]\n", code, tm_tran->method.len,
  			tm_tran->method.s, dlg, b2b_key->len, b2b_key->s);
  
@@ -120,9 +194,20 @@ diff -Naur opensips-1.8.2-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	{
  		LM_DBG("A retransmission of the reply\n");
  		lock_release(&table[hash_index].lock);
-diff -Naur opensips-1.8.2-tls/modules/b2b_entities/dlg.h b2b_entities/dlg.h
---- opensips-1.8.2-tls/modules/b2b_entities/dlg.h	2013-01-16 13:08:18.000000000 +0000
-+++ b2b_entities/dlg.h	2013-04-26 16:41:29.332937830 +0100
+@@ -2518,8 +2693,8 @@
+ 					cseq = msg->cseq->body;
+ 					trim_trailing(&rseq);
+ 					trim_trailing(&cseq);
+-					sprintf(buf, "RAck: %.*s %.*s\r\n",
+-							rseq.len, rseq.s, cseq.len, cseq.s);
++					sprintf(buf, "RAck: %.*s %.*s\r\nMax-Forwards: 70\r\n",
++							rseq.len, rseq.s, cseq.len, cseq.s); //Jorge, added max-forwards
+ 					extra_headers.s = buf;
+ 					extra_headers.len = strlen(buf);
+ 						
+diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.h b2b_entities/dlg.h
+--- opensips-1.8.3-tls/modules/b2b_entities/dlg.h	2012-03-26 10:05:52.000000000 +0100
++++ b2b_entities/dlg.h	2013-09-24 11:06:56.815637274 +0100
 @@ -49,6 +49,7 @@
  
  
