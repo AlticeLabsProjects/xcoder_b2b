@@ -1,11 +1,11 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.c	2013-09-24 11:06:56.939652316 +0100
++++ b2b_logic/b2b_logic.c	2013-10-07 09:30:49.500387210 +0100
 @@ -68,6 +68,7 @@
  int  b2b_init_request(struct sip_msg* msg, str* arg1, str* arg2, str* arg3,
  		str* arg4, str* arg5, str* arg6);
  int  b2b_bridge_request(struct sip_msg* msg, str* arg1, str* arg2);
-+static int get_maxfwd_mode(void);
++static int get_maxfwd_mode(void); //Jorge
  
  void b2b_mark_todel( b2bl_tuple_t* tuple);
  
@@ -62,7 +62,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.
  	b2b_logic_dump(0);
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.h
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.h	2013-09-24 11:06:56.943637250 +0100
++++ b2b_logic/b2b_logic.h	2013-10-07 09:30:49.500387210 +0100
 @@ -32,6 +32,7 @@
  #include <libxml/parser.h>
  #include "../../str.h"
@@ -93,8 +93,8 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.
  	CALLER_MODULE,
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/logic.c	2013-09-24 11:06:56.947636887 +0100
-@@ -425,6 +425,18 @@
++++ b2b_logic/logic.c	2013-10-07 09:30:49.508387576 +0100
+@@ -425,6 +425,17 @@
  			}
  
  			memset(&req_data, 0, sizeof(b2b_req_data_t));
@@ -109,11 +109,10 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +			req_data.extra_headers=&headers;
 +			LM_NOTICE("Extra headers : %.*s\n",headers.len,headers.s);
 +
-+//			AQUI
  			PREP_REQ_DATA(bentity);
  			req_data.method =method;
  			b2b_api.send_request(&req_data);
-@@ -1019,6 +1031,36 @@
+@@ -1019,6 +1030,36 @@
  	}							\
  }while(0)
  
@@ -150,62 +149,60 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
  int b2b_logic_notify_reply(int src, struct sip_msg* msg, str* key, str* body, str* extra_headers,
  		str* b2bl_key, unsigned int hash_index, unsigned int local_index)
  {
-@@ -2206,6 +2248,54 @@
+@@ -2200,12 +2241,51 @@
+ 		}
+ 		else
+ 		{	/* build extra headers */
+-			if(b2b_extra_headers(msg, NULL, NULL, &extra_headers)< 0)
++
++			//Jorge
++			str foo,maxfwd_hdr;
++			int x, err;
++			if  (msg->maxforwards && parse_headers( msg , HDR_MAXFORWARDS_F, 0 )==-1 )
++			{
++				LM_ERR("Parsing MAX_FORWARD header failed!\n");
++			}
++			if(msg->maxforwards)
++			{
++				trim_len( foo.len , foo.s , msg->maxforwards->body );
++				x = str2s( foo.s,foo.len,&err);
++				char header_tmp[50];
++
++				//Check behavior related do max-forwards header
++				LM_DBG("Max-forwards behavior is = %d\n",b2bl_max_forwards_mode);
++				switch(b2bl_max_forwards_mode)
++				{
++					case DECREMENT : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
++						break;
++					case PASS_THROUGH : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x));
++						break;
++					case RESET : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",70);
++						break;
++					default : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
++						break;
++				}
++				maxfwd_hdr.s = header_tmp;
++				maxfwd_hdr.len = strlen(maxfwd_hdr.s);
++			}
++			else
++			{
++				LM_DBG("No Max-Forwards header found. Insert default header\n");
++				maxfwd_hdr.s = "Max-Forwards: 70\r\n";
++				maxfwd_hdr.len = 18;
++			}
++			//END
++
++			if(b2b_extra_headers(msg, NULL, &maxfwd_hdr, &extra_headers)< 0)
+ 			{
+ 				LM_ERR("Failed to construct extra headers\n");
  				goto done;
  			}
  		}
 +
-+		//Jorge
-+		str foo,maxfwd_hdr;
-+		int x, err;
-+		if  (msg->maxforwards && parse_headers( msg , HDR_MAXFORWARDS_F, 0 )==-1 )
-+		{
-+			LM_ERR("Parsing MAX_FORWARD header failed!\n");
-+		}
-+		if(msg->maxforwards)
-+		{
-+			trim_len( foo.len , foo.s , msg->maxforwards->body );
-+			x = str2s( foo.s,foo.len,&err);
-+			char header_tmp[50];
-+
-+			//Check behavior related do max-forwards header
-+			LM_DBG("Max-forwards behavior is = %d\n",b2bl_max_forwards_mode);
-+			switch(b2bl_max_forwards_mode)
-+			{
-+				case DECREMENT : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
-+					break;
-+				case PASS_THROUGH : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x));
-+					break;
-+				case RESET : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",70);
-+					break;
-+				default : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
-+					break;
-+			}
-+			maxfwd_hdr.s = header_tmp;
-+			maxfwd_hdr.len = strlen(maxfwd_hdr.s);
-+
-+			if(b2b_extra_headers(msg, NULL, &maxfwd_hdr, &extra_headers)< 0)
-+			{
-+				LM_ERR("Failed to construct extra headers\n");
-+				goto done;
-+			}
-+		}
-+		else
-+		{
-+			LM_DBG("No Max-Forwards header found. Insert defaul header\n");
-+			str maxfwd_hdr={"Max-Forwards: 70\r\n", 18};
-+			if(b2b_extra_headers(msg, NULL, &maxfwd_hdr, &extra_headers)< 0)
-+			{
-+				LM_ERR("Failed to construct extra headers\n");
-+				goto done;
-+			}
-+		}
-+		//End
-+
  		ret = b2b_logic_notify_request(src, msg, key, &body, &extra_headers,
  		 				b2bl_key, hash_index, local_index);
  	}
-@@ -2818,6 +2908,74 @@
+@@ -2818,6 +2898,77 @@
  		b2bl_db_insert(tuple);
  	}
  
@@ -213,11 +210,11 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +
 +   struct to_body *pfrom;          //Structure contFrom header
 +
-+   if( parse_from_header( msg ) != 0 )
-+   {                    // Parse header FROM
-+      LM_ERR("ERROR. Error parsing from header\n");
-+      goto error;
-+   }
++//   if( parse_from_header( msg ) != 0 )
++//   {                    // Parse header FROM
++//      LM_ERR("ERROR. Error parsing from header\n");
++//      goto error;
++//   }
 +
 +   pfrom = get_from(msg);          //Get structure containing From header
 +
@@ -273,14 +270,17 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +   Xsnprintf(b2b_key,b2bl_key->len+1,b2bl_key->s);
 +   Xsnprintf(b2b_from_tag_gen,from_tag_gen.len+1,from_tag_gen.s);
 +
++   LM_DBG("In b2b_logic.\n");
++   LM_DBG("orig_call_ID = %s | b2b_call_ID = %s | b2b_server_call_ID = %s | b2b_key = %s | from_tag = %s | b2b_from_tag_gen = %s.\n",orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
++
 +   b2b_xcoder.add_b2b_callID(orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
 +
-+   // End of (JORGE) modifications
++//   // End of (JORGE) modifications
 +
  	lock_release(&b2bl_htable[hash_index].lock);
  
  	pkg_free(to_uri.s);
-@@ -4086,3 +4244,4 @@
+@@ -4086,3 +4237,4 @@
  		pkg_free(new_body.s);
  	return -1;
  }
