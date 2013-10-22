@@ -1,14 +1,22 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.c	2013-01-28 15:56:15.000000000 +0000
-+++ b2b_entities/dlg.c	2013-09-24 11:06:56.859637033 +0100
-@@ -852,6 +852,180 @@
++++ b2b_entities/dlg.c	2013-10-22 15:46:06.480137126 +0100
+@@ -509,7 +509,6 @@
+ 	}
+ 	LM_DBG("start - method = %.*s\n", msg->first_line.u.request.method.len,
+ 		 msg->first_line.u.request.method.s);
+-
+ 	if(msg->route)
+ 	{
+ 		LM_DBG("Found route headers\n");
+@@ -852,6 +851,188 @@
  		}
  	}
  
-+   /* Begin Jorge modifications
-+    * Check max-forwards header
-+    * Check if a reinvite has fax attributes
-+    * */
++//   /* Begin Jorge modifications
++//    * Check max-forwards header
++//    * Check if a reinvite has fax attributes
++//    * */
 +
 +	str foo;
 +	int x=255, err;
@@ -94,7 +102,8 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 +   {
 +      LM_INFO("Check if reinvite has fax attributes");
 +
-+      if (parse_sdp(msg) < 0)
++      int tmp=parse_sdp(msg);
++      if (tmp < 0 || tmp==1) //If sdp is not present, parse_sdp returns 1
 +      {
 +         LM_ERR("Unable to parse sdp");
 +         lock_release(&table[hash_index].lock);
@@ -102,7 +111,14 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 +      }
 +
 +      struct sdp_info* sdp;
-+      sdp = msg->sdp;
++      if (msg->sdp && msg->sdp->sessions && msg->sdp->sessions->streams)
++         sdp = msg->sdp;
++      else
++      {
++         LM_ERR("Unable to get necessary sdp content");
++         lock_release(&table[hash_index].lock);
++         return -1;
++      }
 +
 +      struct sdp_session_cell *sessions;
 +      sessions = sdp->sessions;
@@ -177,12 +193,12 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 +      }
 +   }
 +
-+   // End of Jorge modifications
++//   // End of Jorge modifications
 +
  	b2b_cback = dlg->b2b_cback;
  	if(dlg->param.s)
  	{
-@@ -1280,8 +1454,9 @@
+@@ -1280,8 +1461,9 @@
  	LM_DBG("Send reply %d %.*s, for dlg [%p]->[%.*s]\n", code, tm_tran->method.len,
  			tm_tran->method.s, dlg, b2b_key->len, b2b_key->s);
  
@@ -194,7 +210,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	{
  		LM_DBG("A retransmission of the reply\n");
  		lock_release(&table[hash_index].lock);
-@@ -2518,8 +2693,8 @@
+@@ -2518,8 +2700,9 @@
  					cseq = msg->cseq->body;
  					trim_trailing(&rseq);
  					trim_trailing(&cseq);
@@ -202,12 +218,13 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 -							rseq.len, rseq.s, cseq.len, cseq.s);
 +					sprintf(buf, "RAck: %.*s %.*s\r\nMax-Forwards: 70\r\n",
 +							rseq.len, rseq.s, cseq.len, cseq.s); //Jorge, added max-forwards
++//					sprintf(buf, "RAck: %.*s %.*s\r\n",rseq.len, rseq.s, cseq.len, cseq.s);
  					extra_headers.s = buf;
  					extra_headers.len = strlen(buf);
  						
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.h b2b_entities/dlg.h
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.h	2012-03-26 10:05:52.000000000 +0100
-+++ b2b_entities/dlg.h	2013-09-24 11:06:56.815637274 +0100
++++ b2b_entities/dlg.h	2013-10-22 15:46:06.456146972 +0100
 @@ -49,6 +49,7 @@
  
  
