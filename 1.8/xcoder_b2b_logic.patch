@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.c	2013-10-07 09:30:49.500387210 +0100
++++ b2b_logic/b2b_logic.c	2013-11-18 16:53:10.167887219 +0000
 @@ -68,6 +68,7 @@
  int  b2b_init_request(struct sip_msg* msg, str* arg1, str* arg2, str* arg3,
  		str* arg4, str* arg5, str* arg6);
@@ -62,7 +62,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.
  	b2b_logic_dump(0);
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.h
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.h	2013-10-07 09:30:49.500387210 +0100
++++ b2b_logic/b2b_logic.h	2013-11-18 16:53:10.171887073 +0000
 @@ -32,6 +32,7 @@
  #include <libxml/parser.h>
  #include "../../str.h"
@@ -93,7 +93,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.
  	CALLER_MODULE,
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/logic.c	2013-10-07 09:30:49.508387576 +0100
++++ b2b_logic/logic.c	2013-11-18 16:53:10.175887173 +0000
 @@ -425,6 +425,17 @@
  			}
  
@@ -149,29 +149,181 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
  int b2b_logic_notify_reply(int src, struct sip_msg* msg, str* key, str* body, str* extra_headers,
  		str* b2bl_key, unsigned int hash_index, unsigned int local_index)
  {
-@@ -2200,12 +2241,51 @@
- 		}
- 		else
- 		{	/* build extra headers */
--			if(b2b_extra_headers(msg, NULL, NULL, &extra_headers)< 0)
+@@ -1971,28 +2012,12 @@
+ 
+ int b2b_logic_notify(int src, struct sip_msg* msg, str* key, int type, void* param)
+ {
+-	#define U_REPLACES_BUF_LEN 512
+-	char u_replaces_buf[U_REPLACES_BUF_LEN];
+-	str u_replaces = { u_replaces_buf, U_REPLACES_BUF_LEN};
+ 	unsigned int hash_index, local_index;
+-	unsigned int hash_idx, local_idx;
+-	str entity_key = {NULL, 0};
+-	b2bl_tuple_t* tuple;
+ 	str* b2bl_key = (str*)param;
+ 	str body= {NULL, 0};
+ 	str extra_headers = {NULL, 0};
+ 	str new_body={NULL, 0};
+ 	int ret = -1;
+-	#define H_SIZE 2
+-	str h_name[H_SIZE];
+-	str h_val[H_SIZE];
+-	str rt_header;
+-	str* replaces = NULL;
+-	#define RT_BUF_LEN 1024
+-	char rt_buf[RT_BUF_LEN];
+-	str rt;
+-	struct b2bl_entity_id* r_peer = NULL;
+-	int i;
+ 
+ 	if(b2bl_key == NULL)
+ 	{
+@@ -2057,155 +2082,52 @@
+ 	else
+ 	if(type == B2B_REQUEST)
+ 	{
+-		if(msg->first_line.u.request.method_value==METHOD_REFER &&
+-			parse_refer_to_header(msg)==0 && msg->refer_to!=NULL &&
+-			get_refer_to(msg)!=NULL && parse_uri(get_refer_to(msg)->uri.s,
+-							get_refer_to(msg)->uri.len,
+-							&(get_refer_to(msg)->parsed_uri))==0)
+-		{
+-			/* We have a Refer-To header */
+-			if(get_refer_to(msg)->parsed_uri.headers.s &&
+-				parse_uri_headers(get_refer_to(msg)->parsed_uri.headers,
+-								h_name,h_val,H_SIZE)==0)
++		{	/* build extra headers */
 +
 +			//Jorge
 +			str foo,maxfwd_hdr;
 +			int x, err;
 +			if  (msg->maxforwards && parse_headers( msg , HDR_MAXFORWARDS_F, 0 )==-1 )
-+			{
+ 			{
+-				for(i=0; i<H_SIZE && h_name[i].s && h_name[i].len; i++)
+-					if(strncmp("Replaces",h_name[i].s,h_name[i].len)==0)
+-					{
+-						replaces = &h_val[i];
+-						break;
+-					}
 +				LM_ERR("Parsing MAX_FORWARD header failed!\n");
-+			}
+ 			}
+-			if ( replaces && get_b2b_dialog_by_replace(replaces, &u_replaces,
+-			&entity_key, &hash_idx, &local_idx)==0 )
 +			if(msg->maxforwards)
-+			{
+ 			{
+-				/* There is a "replaces" info and it matches a local dialog */
+-				lock_get(&b2bl_htable[hash_idx].lock);
+-				tuple=b2bl_search_tuple_safe(hash_idx, local_idx);
+-				if(tuple == NULL)
+-				{
+-					LM_ERR("B2B logic record not found\n");
+-					lock_release(&b2bl_htable[hash_idx].lock);
+-					goto done;
+-				}
+-				b2bl_print_tuple(tuple, L_ERR);
+-				for(i=0;i<MAX_B2BL_ENT;i++)
+-				{
+-					if(tuple->servers[i] &&
+-						tuple->servers[i]->key.len==entity_key.len &&
+-						strncmp(tuple->servers[i]->key.s,
+-							entity_key.s, entity_key.len)==0)
+-					{
+-						r_peer = tuple->servers[i]->peer;
+-						break;
+-					}
+-				}
+-				lock_release(&b2bl_htable[hash_idx].lock);
 +				trim_len( foo.len , foo.s , msg->maxforwards->body );
 +				x = str2s( foo.s,foo.len,&err);
 +				char header_tmp[50];
-+
+ 
+-				if(!r_peer)
 +				//Check behavior related do max-forwards header
 +				LM_DBG("Max-forwards behavior is = %d\n",b2bl_max_forwards_mode);
 +				switch(b2bl_max_forwards_mode)
-+				{
+ 				{
+-					LM_ERR("no replaces peer\n");
+-					goto done;
+-				}
+-				LM_DBG("got replacement callid=[%.*s] "
+-					"to-tag=[%.*s] and from-tag=[%.*s]\n",
+-					r_peer->dlginfo->callid.len, r_peer->dlginfo->callid.s,
+-					r_peer->dlginfo->totag.len, r_peer->dlginfo->totag.s,
+-					r_peer->dlginfo->fromtag.len, r_peer->dlginfo->fromtag.s);
+-
+-				/* build the escaped Replaces URI header
+-				 * Note: dlginfo->totag becomes from-tag in Replaces URI header
+-				 *       dlginfo->fromtag becomes to-tag in Replaces URI header
+-				 */
+-				i = r_peer->dlginfo->callid.len + r_peer->dlginfo->fromtag.len +
+-					r_peer->dlginfo->totag.len + 18 /* 2x'=' + 2x'=' + ft */;
+-				if (U_REPLACES_BUF_LEN < i)
+-				{
+-					LM_ERR("not enough space in the buffer: "
+-						"U_REPLACES_BUF_LEN < %d\n", i);
+-				}
+-				memcpy(u_replaces.s,
+-					r_peer->dlginfo->callid.s, r_peer->dlginfo->callid.len);
+-				i = r_peer->dlginfo->callid.len;
+-				u_replaces_buf[i] = ';';
+-				i++;
+-				memcpy(u_replaces.s + i, "from-tag", strlen("from-tag"));
+-				i += strlen("from-tag");
+-				u_replaces_buf[i] = '=';
+-				i++;
+-				memcpy(u_replaces.s + i,
+-					r_peer->dlginfo->totag.s, r_peer->dlginfo->totag.len);
+-				i += r_peer->dlginfo->totag.len;
+-				u_replaces_buf[i] = ';';
+-				i++;
+-				memcpy(u_replaces.s + i, "to-tag", strlen("to-tag"));
+-				i += strlen("to-tag");
+-				u_replaces_buf[i] = '=';
+-				i++;
+-				memcpy(u_replaces.s + i,
+-					r_peer->dlginfo->fromtag.s, r_peer->dlginfo->fromtag.len);
+-				i += r_peer->dlginfo->fromtag.len;
+-				u_replaces.len = i;
+-
+-				/* build the new Refer-To header
+-				 * Note: for now, we ignore the "early-only" parameter
+-				 */
+-				i = (int)(replaces->s - msg->refer_to->name.s);
+-				if(i>=RT_BUF_LEN)
+-				{
+-					LM_ERR("Not enough space to build Refer-To: "
+-								"%d>=RT_BUF_LEN\n", i);
+-					goto done;
+-				}
+-				memcpy(&rt_buf[0], msg->refer_to->name.s, i);
+-				rt.s = &rt_buf[i];
+-				rt.len = RT_BUF_LEN - i;
+-				if(escape_param(&u_replaces, &rt)!=0)
+-				{
+-					LM_ERR("Unable to escape [%.*s] with len [%d] in char[%d]\n",
+-						u_replaces.len,u_replaces.s, u_replaces.len, rt.len);
+-					goto done;
+-				}
+-				//LM_DBG("escaped replaces [%.*s]\n", rt.len, rt.s);
+-				i = (int)(msg->refer_to->name.s + msg->refer_to->len -
+-						replaces->s - replaces->len);
+-				if(RT_BUF_LEN<=(int)(rt.s - &rt_buf[0] + rt.len + i))
+-				{
+-					LM_ERR("Not enough space to build Refer-To: "
+-						"RT_BUF_LEN<=[%d]\n",
+-						(int)(rt.s - &rt_buf[0] + rt.len + i));
+-					goto done;
+-				}
+-				memcpy(rt.s + rt.len, replaces->s + replaces->len, i);
+-				rt.len = (int)(rt.s + rt.len + i - &rt_buf[0]);
+-				rt.s = &rt_buf[0];
+-				LM_DBG("New Refer-To: [%.*s]\n", rt.len, rt.s);
+-
+-				/* build extra headers */
+-				if(b2b_extra_headers(msg, NULL, &rt, &extra_headers)< 0)
+-				{
+-					LM_ERR("Failed to construct extra headers\n");
+-					goto done;
 +					case DECREMENT : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
 +						break;
 +					case PASS_THROUGH : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x));
@@ -180,16 +332,28 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +						break;
 +					default : snprintf(header_tmp,50,"Max-Forwards: %d\r\n",(x-1));
 +						break;
-+				}
+ 				}
 +				maxfwd_hdr.s = header_tmp;
 +				maxfwd_hdr.len = strlen(maxfwd_hdr.s);
-+			}
-+			else
+ 			}
+ 			else
+-			{	/* build extra headers */
+-				rt_header.s = msg->refer_to->name.s;
+-				rt_header.len = msg->refer_to->len;
+-				if(b2b_extra_headers(msg, NULL, &rt_header, &extra_headers)< 0)
+-				{
+-					LM_ERR("Failed to construct extra headers\n");
+-					goto done;
+-				}
 +			{
 +				LM_DBG("No Max-Forwards header found. Insert default header\n");
 +				maxfwd_hdr.s = "Max-Forwards: 70\r\n";
 +				maxfwd_hdr.len = 18;
-+			}
+ 			}
+-		}
+-		else
+-		{	/* build extra headers */
+-			if(b2b_extra_headers(msg, NULL, NULL, &extra_headers)< 0)
 +			//END
 +
 +			if(b2b_extra_headers(msg, NULL, &maxfwd_hdr, &extra_headers)< 0)
@@ -202,7 +366,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
  		ret = b2b_logic_notify_request(src, msg, key, &body, &extra_headers,
  		 				b2bl_key, hash_index, local_index);
  	}
-@@ -2818,6 +2898,77 @@
+@@ -2818,6 +2740,77 @@
  		b2bl_db_insert(tuple);
  	}
  
@@ -280,7 +444,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
  	lock_release(&b2bl_htable[hash_index].lock);
  
  	pkg_free(to_uri.s);
-@@ -4086,3 +4237,4 @@
+@@ -4086,3 +4079,4 @@
  		pkg_free(new_body.s);
  	return -1;
  }
