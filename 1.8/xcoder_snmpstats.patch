@@ -1,6 +1,6 @@
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/alarm_checks.c snmpstats/alarm_checks.c
---- opensips-1.8.2-tls/modules/snmpstats/alarm_checks.c	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/alarm_checks.c	2013-04-26 16:41:36.732437823 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/alarm_checks.c snmpstats/alarm_checks.c
+--- opensips-1.8.3-tls/modules/snmpstats/alarm_checks.c	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/alarm_checks.c	2013-09-24 11:20:48.235637172 +0100
 @@ -38,6 +38,8 @@
  #include "utilities.h"
  #include "openserObjects.h"
@@ -176,9 +176,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/alarm_checks.c snmpstats/alarm_c
  }
  
  
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/alarm_checks.h snmpstats/alarm_checks.h
---- opensips-1.8.2-tls/modules/snmpstats/alarm_checks.h	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/alarm_checks.h	2013-04-26 16:41:36.740437738 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/alarm_checks.h snmpstats/alarm_checks.h
+--- opensips-1.8.3-tls/modules/snmpstats/alarm_checks.h	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/alarm_checks.h	2013-09-24 11:20:48.239637017 +0100
 @@ -32,7 +32,7 @@
  #ifndef _SNMPSTATS_ALARM_AGENT_
  #define _SNMPSTATS_ALARM_AGENT_
@@ -188,27 +188,27 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/alarm_checks.h snmpstats/alarm_c
  #define ALARM_AGENT_NAME                 "snmpstats_alarm_agent"
  
  /* Returns the number of bytes currently waiting in the msg queue if they exceed
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/openserMIBNotifications.c snmpstats/openserMIBNotifications.c
---- opensips-1.8.2-tls/modules/snmpstats/openserMIBNotifications.c	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/openserMIBNotifications.c	2013-04-26 16:41:36.704437179 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/openserMIBNotifications.c snmpstats/openserMIBNotifications.c
+--- opensips-1.8.3-tls/modules/snmpstats/openserMIBNotifications.c	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/openserMIBNotifications.c	2013-09-24 11:20:48.243637207 +0100
 @@ -240,3 +240,5 @@
  
  	return SNMP_ERR_NOERROR;
  }
 +
 +
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/openserMIBNotifications.h snmpstats/openserMIBNotifications.h
---- opensips-1.8.2-tls/modules/snmpstats/openserMIBNotifications.h	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/openserMIBNotifications.h	2013-04-26 16:41:36.708437875 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/openserMIBNotifications.h snmpstats/openserMIBNotifications.h
+--- opensips-1.8.3-tls/modules/snmpstats/openserMIBNotifications.h	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/openserMIBNotifications.h	2013-09-24 11:20:48.247637214 +0100
 @@ -80,4 +80,5 @@
   */
  int send_openserDialogLimitMajorEvent_trap(int numDialogs, int threshold);
  
 +
  #endif /* OPENSERMIBNOTIFICATIONS_H */
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats.c snmpstats/snmpstats.c
---- opensips-1.8.2-tls/modules/snmpstats/snmpstats.c	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/snmpstats.c	2013-04-26 16:41:36.752437836 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmpstats.c snmpstats/snmpstats.c
+--- opensips-1.8.3-tls/modules/snmpstats/snmpstats.c	2012-12-19 14:40:13.000000000 +0000
++++ snmpstats/snmpstats.c	2013-09-24 11:20:48.251637294 +0100
 @@ -79,6 +79,8 @@
  #include "utilities.h"
  #include "sub_agent.h"
@@ -290,7 +290,7 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats.c snmpstats/snmpstats.
  
  	return 0;
  }
-@@ -282,6 +338,88 @@
+@@ -283,6 +339,88 @@
  	
      freeInterprocessBuffer();
  
@@ -379,18 +379,18 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats.c snmpstats/snmpstats.
      LM_INFO("                 Shutting down the AgentX Sub-Agent!\n");
  }
  
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats_globals.h snmpstats/snmpstats_globals.h
---- opensips-1.8.2-tls/modules/snmpstats/snmpstats_globals.h	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/snmpstats_globals.h	2013-04-26 16:41:36.712437927 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmpstats_globals.h snmpstats/snmpstats_globals.h
+--- opensips-1.8.3-tls/modules/snmpstats/snmpstats_globals.h	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/snmpstats_globals.h	2013-09-24 11:20:48.255637183 +0100
 @@ -147,5 +147,4 @@
  /* Handles setting of the snmp community string. */
  int set_snmp_community( modparam_t type, void *val);
  
 -
  #endif
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats.h snmpstats/snmpstats.h
---- opensips-1.8.2-tls/modules/snmpstats/snmpstats.h	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/snmpstats.h	2013-04-26 16:41:36.652437810 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmpstats.h snmpstats/snmpstats.h
+--- opensips-1.8.3-tls/modules/snmpstats/snmpstats.h	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/snmpstats.h	2013-09-24 11:20:48.255637183 +0100
 @@ -68,6 +68,7 @@
  #include "../../mem/shm_mem.h"
  #include "snmpstats_globals.h"
@@ -425,9 +425,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmpstats.h snmpstats/snmpstats.
  	{ 0,0,0 }
  };
  
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.c snmpstats/snmp_xcoder_b2b_threshold.c
---- opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.c	1970-01-01 01:00:00.000000000 +0100
-+++ snmpstats/snmp_xcoder_b2b_threshold.c	2013-04-26 16:41:36.952437777 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.c snmpstats/snmp_xcoder_b2b_threshold.c
+--- opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.c	1970-01-01 01:00:00.000000000 +0100
++++ snmpstats/snmp_xcoder_b2b_threshold.c	2013-09-24 11:20:48.259637070 +0100
 @@ -0,0 +1,174 @@
 +/*
 + * xcoder_b2b_threshold.c
@@ -603,9 +603,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.c snmp
 +{
 +   return create_call_threshold;
 +}
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.h snmpstats/snmp_xcoder_b2b_threshold.h
---- opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.h	1970-01-01 01:00:00.000000000 +0100
-+++ snmpstats/snmp_xcoder_b2b_threshold.h	2013-04-26 16:41:36.904437488 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.h snmpstats/snmp_xcoder_b2b_threshold.h
+--- opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.h	1970-01-01 01:00:00.000000000 +0100
++++ snmpstats/snmp_xcoder_b2b_threshold.h	2013-09-24 11:20:48.263637135 +0100
 @@ -0,0 +1,108 @@
 +/*
 + * xcoder_b2b_threshold.h
@@ -715,9 +715,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_threshold.h snmp
 +int get_alarm_freq();
 +
 +#endif /* XCODER_B2B_THRESHOLD_H_ */
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.c snmpstats/snmp_xcoder_b2b_traps.c
---- opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
-+++ snmpstats/snmp_xcoder_b2b_traps.c	2013-04-26 16:41:36.908437770 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_traps.c snmpstats/snmp_xcoder_b2b_traps.c
+--- opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
++++ snmpstats/snmp_xcoder_b2b_traps.c	2013-09-24 11:20:48.267636982 +0100
 @@ -0,0 +1,770 @@
 +/*
 + * xcoder_b2b_traps.c
@@ -1489,9 +1489,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.c snmpstat
 +   }
 +   return 0;
 +}
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.h snmpstats/snmp_xcoder_b2b_traps.h
---- opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ snmpstats/snmp_xcoder_b2b_traps.h	2013-04-26 16:41:36.884437807 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_traps.h snmpstats/snmp_xcoder_b2b_traps.h
+--- opensips-1.8.3-tls/modules/snmpstats/snmp_xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
++++ snmpstats/snmp_xcoder_b2b_traps.h	2013-09-24 11:20:48.271637250 +0100
 @@ -0,0 +1,235 @@
 +/*
 + * xcoder_b2b_traps.h
@@ -1728,9 +1728,9 @@ diff -Naur opensips-1.8.2-tls/modules/snmpstats/snmp_xcoder_b2b_traps.h snmpstat
 +gen_lock_t * update_trap_values_lock;             // A lock used to update critical parameters in xcoder_b2b_trap
 +
 +#endif /* XCODER_B2B_TRAPS_H_ */
-diff -Naur opensips-1.8.2-tls/modules/snmpstats/sub_agent.c snmpstats/sub_agent.c
---- opensips-1.8.2-tls/modules/snmpstats/sub_agent.c	2013-01-16 13:07:46.000000000 +0000
-+++ snmpstats/sub_agent.c	2013-04-26 16:41:36.720437800 +0100
+diff -Naur opensips-1.8.3-tls/modules/snmpstats/sub_agent.c snmpstats/sub_agent.c
+--- opensips-1.8.3-tls/modules/snmpstats/sub_agent.c	2012-03-26 10:05:33.000000000 +0100
++++ snmpstats/sub_agent.c	2013-09-24 11:20:48.275637124 +0100
 @@ -36,13 +36,20 @@
  
  #include "../../dprint.h"
