@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.c	2013-11-18 16:53:10.167887219 +0000
++++ b2b_logic/b2b_logic.c	2013-12-06 14:49:52.295637279 +0000
 @@ -68,6 +68,7 @@
  int  b2b_init_request(struct sip_msg* msg, str* arg1, str* arg2, str* arg3,
  		str* arg4, str* arg5, str* arg6);
@@ -62,7 +62,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.c b2b_logic/b2b_logic.
  	b2b_logic_dump(0);
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.h
 --- opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/b2b_logic.h	2013-11-18 16:53:10.171887073 +0000
++++ b2b_logic/b2b_logic.h	2013-12-06 14:49:52.299647547 +0000
 @@ -32,6 +32,7 @@
  #include <libxml/parser.h>
  #include "../../str.h"
@@ -93,7 +93,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/b2b_logic.h b2b_logic/b2b_logic.
  	CALLER_MODULE,
 diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 --- opensips-1.8.3-tls/modules/b2b_logic/logic.c	2012-11-01 14:19:49.000000000 +0000
-+++ b2b_logic/logic.c	2013-11-18 16:53:10.175887173 +0000
++++ b2b_logic/logic.c	2013-12-06 14:49:52.303637248 +0000
 @@ -425,6 +425,17 @@
  			}
  
@@ -366,7 +366,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
  		ret = b2b_logic_notify_request(src, msg, key, &body, &extra_headers,
  		 				b2bl_key, hash_index, local_index);
  	}
-@@ -2818,6 +2740,77 @@
+@@ -2818,6 +2740,88 @@
  		b2bl_db_insert(tuple);
  	}
  
@@ -423,10 +423,14 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +   char b2b_server_call_ID[128];
 +   char b2b_key[128];
 +   char b2b_from_tag_gen[128];
++   char req_uri_user[128];
++   char via_branch[128];
 +   bzero(b2b_call_ID,128);
 +   bzero(b2b_server_call_ID,128);
 +   bzero(b2b_key,128);
 +   bzero(b2b_from_tag_gen,128);
++   bzero(req_uri_user,128);
++   bzero(via_branch,128);
 +
 +   Xsnprintf(orig_call_ID,msg->callid->body.len+1,msg->callid->body.s);
 +   Xsnprintf(b2b_call_ID,client_id->len+1,client_id->s);
@@ -434,17 +438,24 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_logic/logic.c b2b_logic/logic.c
 +   Xsnprintf(b2b_key,b2bl_key->len+1,b2bl_key->s);
 +   Xsnprintf(b2b_from_tag_gen,from_tag_gen.len+1,from_tag_gen.s);
 +
++   // get optional fields
++   if (msg->parsed_uri.user.s && msg->parsed_uri.user.len < 128)
++      sprintf(req_uri_user, "%.*s", msg->parsed_uri.user.len, msg->parsed_uri.user.s);
++
++   if (msg->via1 && msg->via1->branch->value.s && msg->via1->branch->value.len < 128)
++      sprintf(via_branch, "%.*s", msg->via1->branch->value.len, msg->via1->branch->value.s);
++
 +   LM_DBG("In b2b_logic.\n");
 +   LM_DBG("orig_call_ID = %s | b2b_call_ID = %s | b2b_server_call_ID = %s | b2b_key = %s | from_tag = %s | b2b_from_tag_gen = %s.\n",orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
 +
-+   b2b_xcoder.add_b2b_callID(orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen);
++   b2b_xcoder.add_b2b_callID(orig_call_ID,b2b_call_ID,b2b_server_call_ID,b2b_key,from_tag,b2b_from_tag_gen,req_uri_user,via_branch);
 +
 +//   // End of (JORGE) modifications
 +
  	lock_release(&b2bl_htable[hash_index].lock);
  
  	pkg_free(to_uri.s);
-@@ -4086,3 +4079,4 @@
+@@ -4086,3 +4090,4 @@
  		pkg_free(new_body.s);
  	return -1;
  }
