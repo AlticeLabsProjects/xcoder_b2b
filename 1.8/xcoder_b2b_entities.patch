@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.c	2013-01-28 15:56:15.000000000 +0000
-+++ b2b_entities/dlg.c	2013-10-22 15:46:06.480137126 +0100
++++ b2b_entities/dlg.c	2014-02-14 15:07:21.514354231 +0000
 @@ -509,7 +509,6 @@
  	}
  	LM_DBG("start - method = %.*s\n", msg->first_line.u.request.method.len,
@@ -9,7 +9,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	if(msg->route)
  	{
  		LM_DBG("Found route headers\n");
-@@ -852,6 +851,188 @@
+@@ -852,6 +851,181 @@
  		}
  	}
  
@@ -98,17 +98,10 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 +      goto done;
 +   }
 +
-+   if((dlg->state == B2B_ESTABLISHED && method_value == METHOD_INVITE) )
++   int tmp;
++   if((dlg->state == B2B_ESTABLISHED && method_value == METHOD_INVITE && (tmp = parse_sdp(msg)) == 0) )
 +   {
 +      LM_INFO("Check if reinvite has fax attributes");
-+
-+      int tmp=parse_sdp(msg);
-+      if (tmp < 0 || tmp==1) //If sdp is not present, parse_sdp returns 1
-+      {
-+         LM_ERR("Unable to parse sdp");
-+         lock_release(&table[hash_index].lock);
-+         return -1;
-+      }
 +
 +      struct sdp_info* sdp;
 +      if (msg->sdp && msg->sdp->sessions && msg->sdp->sessions->streams)
@@ -198,7 +191,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	b2b_cback = dlg->b2b_cback;
  	if(dlg->param.s)
  	{
-@@ -1280,8 +1461,9 @@
+@@ -1280,8 +1454,9 @@
  	LM_DBG("Send reply %d %.*s, for dlg [%p]->[%.*s]\n", code, tm_tran->method.len,
  			tm_tran->method.s, dlg, b2b_key->len, b2b_key->s);
  
@@ -210,7 +203,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  	{
  		LM_DBG("A retransmission of the reply\n");
  		lock_release(&table[hash_index].lock);
-@@ -2518,8 +2700,9 @@
+@@ -2518,8 +2693,9 @@
  					cseq = msg->cseq->body;
  					trim_trailing(&rseq);
  					trim_trailing(&cseq);
@@ -224,7 +217,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  						
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.h b2b_entities/dlg.h
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.h	2012-03-26 10:05:52.000000000 +0100
-+++ b2b_entities/dlg.h	2013-10-22 15:46:06.456146972 +0100
++++ b2b_entities/dlg.h	2014-02-14 15:07:21.494354684 +0000
 @@ -49,6 +49,7 @@
  
  
