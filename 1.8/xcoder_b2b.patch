@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Makefile
 --- opensips-1.8.3-tls/modules/xcoder_b2b/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/Makefile	2014-02-21 15:58:50.701854701 +0000
++++ modules/xcoder_b2b/Makefile	2014-02-28 11:30:36.273854708 +0000
 @@ -0,0 +1,16 @@
 +# Author : Jorge Pinho PT Inovacao
 +#
@@ -20,8 +20,8 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Mak
 +
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b/xcoder_b2b.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.c	2014-02-21 15:58:50.725854346 +0000
-@@ -0,0 +1,5894 @@
++++ modules/xcoder_b2b/xcoder_b2b.c	2014-02-28 11:30:36.297855435 +0000
+@@ -0,0 +1,5902 @@
 +#include <sys/stat.h>
 +#include "xcoder_b2b.h"
 +#include "xcoder_b2b_load.h"
@@ -5618,10 +5618,18 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +      {
 +         LM_ALERT("Lost connection to xcoder!\n");
 +         *g_xcoder_conn_status = XCODER_CONN_STATUS_FAILED;
-+         // TODO: close all unix domain sockets gently and send event to the main process to re-establish the connections
-+         lock_release(socket_lock);
-+         return SOCKET_ERROR;
++         // TODO: close all unix domain sockets gently
 +      }
++      
++      lock_release(socket_lock);
++      return SOCKET_ERROR;
++   }
++   else if (*g_xcoder_conn_status == XCODER_CONN_STATUS_FAILED)
++   {
++      // xcoder is up again - our state remains FAILED
++      // TODO: send event to the main process to re-establish the connections
++      lock_release(socket_lock);
++      return SOCKET_ERROR;
 +   }
 +
 +   //LM_DBG("Connection to xcoder status is %d\n", *g_xcoder_conn_status);
@@ -5918,7 +5926,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b/xcoder_b2b.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.h	2014-02-21 15:58:50.701854701 +0000
++++ modules/xcoder_b2b/xcoder_b2b.h	2014-02-28 11:30:36.269854673 +0000
 @@ -0,0 +1,230 @@
 +/********************************************************************************
 + *
@@ -6152,7 +6160,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b
 +time_t * g_xcoder_down_timestamp;           // Timestamp when the xcoder was set to down state
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcoder_b2b/xcoder_b2b_load.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-02-21 15:58:50.697854967 +0000
++++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-02-28 11:30:36.269854673 +0000
 @@ -0,0 +1,69 @@
 +#ifndef _XCODER_LOAD_H_
 +#define _XCODER_LOAD_H_
@@ -6225,7 +6233,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcode
 +#endif
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcoder_b2b/xcoder_b2b_traps.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-02-21 15:58:50.709854617 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-02-28 11:30:36.281854714 +0000
 @@ -0,0 +1,128 @@
 +/*
 + * xcoder_b2b_traps.c
@@ -6357,7 +6365,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcod
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcoder_b2b/xcoder_b2b_traps.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-02-21 15:58:50.713854674 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-02-28 11:30:36.285854720 +0000
 @@ -0,0 +1,34 @@
 +/*
 + * xcoder_b2b_traps.h
@@ -6395,7 +6403,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcod
 +#endif /* XCODER_B2B_TRAPS_H_ */
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h modules/xcoder_b2b/xcoder_protocol.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_protocol.h	2014-02-21 15:58:50.705854648 +0000
++++ modules/xcoder_b2b/xcoder_protocol.h	2014-02-28 11:30:36.277854669 +0000
 @@ -0,0 +1,919 @@
 +/*! 
 + *  \file      xcoder_protocol.h
