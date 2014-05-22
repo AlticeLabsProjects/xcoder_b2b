@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Makefile
 --- opensips-1.8.3-tls/modules/xcoder_b2b/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/Makefile	2014-02-28 11:30:36.273854708 +0000
++++ modules/xcoder_b2b/Makefile	2014-05-22 15:06:53.220777409 +0100
 @@ -0,0 +1,16 @@
 +# Author : Jorge Pinho PT Inovacao
 +#
@@ -20,8 +20,8 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Mak
 +
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b/xcoder_b2b.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.c	2014-02-28 11:30:36.297855435 +0000
-@@ -0,0 +1,5902 @@
++++ modules/xcoder_b2b/xcoder_b2b.c	2014-05-22 15:06:53.240777403 +0100
+@@ -0,0 +1,5959 @@
 +#include <sys/stat.h>
 +#include "xcoder_b2b.h"
 +#include "xcoder_b2b_load.h"
@@ -177,6 +177,37 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +	  bzero(cli->payloads[l].attr_fmtp_line, 100);
 +	  cli->payloads[l].is_empty = 0;
 +	}
++	return OK;
++}
++
++
++
++/******************************************************************************
++ *        NAME: clean_client_media
++ * DESCRIPTION: Receives a client structure and cleans media related fields.
++ *
++ *              cli :    structure to be cleaned
++ *****************************************************************************/
++
++int
++clean_client_media(client * cli)
++{
++   int l = 0;
++
++   bzero(cli->original_port, 7);
++   bzero(cli->media_type, 10);
++   bzero(cli->dst_audio, 7);
++   bzero(cli->dst_video, 7);
++   bzero(cli->payload_str, 50);
++   for (l = 0; l < MAX_PAYLOADS; l++)
++   {
++      bzero(cli->payloads[l].payload, 32);
++      bzero(cli->payloads[l].codec, 64);
++      bzero(cli->payloads[l].attr_rtpmap_line, 100);
++      bzero(cli->payloads[l].attr_fmtp_line, 100);
++      cli->payloads[l].is_empty = 0;
++   }
++
 +	return OK;
 +}
 +
@@ -2307,7 +2338,8 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +         return (readline_O(msg, sdp, i, connection, cli));
 +         break;
 +      case 'c':
-+         if (cli->s == TO_HOLD || cli->s == ON_HOLD) //IF it is a client to put on hold or if already on hold, conn ip must stay 0.0.0.0
++         //IF it is a client to put on hold or if already on hold, conn ip must stay 0.0.0.0
++         if ((cli->s == TO_HOLD || cli->s == ON_HOLD) && !strcmp(cli->conn_ip, "0.0.0.0"))
 +         {
 +            break;
 +         }
@@ -2371,21 +2403,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   if (connection->s != PENDING && connection->s != TWO_OK)
 +   {
 +      LM_INFO("Cleaning client structure. b2bcallid=%d | client_id=%d | client_state=%d | username=%s\n",connection->id,cli->id,cli->s,cli->user_name);
-+      int l = 0;
-+
-+      bzero(cli->original_port, 7);
-+      bzero(cli->media_type, 10);
-+      bzero(cli->dst_audio, 7);
-+      bzero(cli->dst_video, 7);
-+      bzero(cli->payload_str, 50);
-+      for (l = 0; l < MAX_PAYLOADS; l++)
-+      {
-+         bzero(cli->payloads[l].payload, 32);
-+         bzero(cli->payloads[l].codec, 64);
-+         bzero(cli->payloads[l].attr_rtpmap_line, 100);
-+         bzero(cli->payloads[l].attr_fmtp_line, 100);
-+         cli->payloads[l].is_empty = 0;
-+      }
++      clean_client_media(cli);
 +   }
 +
 +   ////////////////////// Previous check if codecs match ////////////
@@ -2607,13 +2625,24 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +            return PARSER_ERROR;
 +         }
 +
++         int chosen_payloads = 0;
 +         for (j = 0; j < MAX_PAYLOADS; j++) // Inserting chosen payload in the sdp content
 +         {
 +            if (cli_dst->payloads[j].is_empty == 1)
 +            {
 +               insert_b2b(msg, &(msg->buf[msg->len]), cli_dst->payloads[j].attr_rtpmap_line);
 +               insert_b2b(msg, &(msg->buf[msg->len]), cli_dst->payloads[j].attr_fmtp_line);
++               chosen_payloads++;
 +            }
++         }
++
++         // If the destination is trying make an inline codec change, add the supported codecs again
++         if (chosen_payloads == 0)
++         {
++            char dst_att[XCODER_MAX_MSG_SIZE];
++            bzero(dst_att, XCODER_MAX_MSG_SIZE);
++            get_all_supported_att(dst_att);
++            insert_b2b(msg, &(msg->buf[msg->len]), dst_att); //Insert codecs/payloads suported by the media relay in the sdp content
 +         }
 +         break;
 +      }
@@ -3788,9 +3817,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   LM_INFO("Parse invite. Check if is a generated invite or an indialog invite\n");
 +   char * message = NULL;
 +   str body;
-+   int has_body = 1;
-+
-+   //TODO: must allow for INVITE without SDP, generate 200OK with full codec list and wait for ACK with SDP
++   int has_body = 1, stream_on_hold = 0;
 +
 +   if (get_body(msg,&body)!=0 || body.len==0)
 +   {
@@ -3843,22 +3870,26 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +      }
 +      
 +      sessions = sdp->sessions;
-+//
-+//   struct sdp_stream_cell* streams;
-+//   streams = sessions->streams;
-+//
-+//   struct sdp_payload_attr *payload_attr;
-+//   payload_attr = streams->payload_attr;
 +
-+   //print_sdp(sdp,3);
-+   /*while(streams!=NULL)
-+    {
-+    LM_NOTICE("payloads : %.*s\n",streams->payloads.len,streams->payloads.s);
-+    LM_NOTICE("port : %.*s\n",streams->port.len,streams->port.s);
-+    LM_NOTICE("sendrecv_mode : %.*s\n",streams->sendrecv_mode.len,streams->sendrecv_mode.s);
++      struct sdp_stream_cell* streams;
++      streams = sessions->streams;
 +
-+    streams = streams->next;
-+    }*/
++      //struct sdp_payload_attr *payload_attr;
++      //payload_attr = streams->payload_attr;
++
++      //print_sdp(sdp,3);
++      while(streams)
++      {
++         LM_DBG("payloads : %.*s\n",streams->payloads.len,streams->payloads.s);
++         LM_DBG("port : %.*s\n",streams->port.len,streams->port.s);
++         LM_DBG("sendrecv_mode : %.*s\n",streams->sendrecv_mode.len,streams->sendrecv_mode.s);
++         LM_DBG("is_on_hold : %d\n",streams->is_on_hold);
++
++         if (streams->is_on_hold)
++            stream_on_hold = 1;
++         
++         streams = streams->next;
++      }
 +   }
 +
 +   struct to_body *pfrom; //Structure From header
@@ -3941,7 +3972,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +               caller_original_state = cli->s;
 +
 +               connections[i].s = REINVITE;
-+               if ((strcmp(conn_ip, "0.0.0.0") == 0))
++               if (strcmp(conn_ip, "0.0.0.0") == 0 || stream_on_hold)
 +               {
 +                  LM_NOTICE("Call to hold. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s\n",
 +                		  connections[i].id,connections[i].s,connections[i].call_id,connections[i].clients[c].id,connections[i].clients[c].s,connections[i].clients[c].user_name);
@@ -3961,10 +3992,16 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +                  cli->s = OFF_HOLD;
 +                  sprintf(cli_dst->tag, to_tag);
 +
-+                  // TODO: handle REINVITE without SDP correctly
++                  // INVITE without SDP will trigger codec renegotiation
 +                  if (has_body)
 +                  {
 +                     status = parse_sdp_b2b(msg, &message, connection, &(connection->clients[c]));
++                  }
++                  else
++                  {
++                     LM_INFO("Cleaning client structure. b2bcallid=%d | client_id=%d | client_state=%d | username=%s\n",
++                              connection->id,cli->id,cli->s,cli->user_name);
++                     clean_client_media(cli);
 +                  }
 +
 +                  exit = 1;
@@ -3976,7 +4013,19 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +                  connection = &(connections[i]);
 +                  cli->s = INVITE_C;
 +                  sprintf(connection->cseq, cseq_call);
-+                  status = parse_sdp_b2b(msg, &message, connection, cli);
++
++                  // INVITE without SDP will trigger codec renegotiation
++                  if (has_body)
++                  {
++                     status = parse_sdp_b2b(msg, &message, connection, cli);
++                  }
++                  else
++                  {
++                     LM_INFO("Cleaning client structure. b2bcallid=%d | client_id=%d | client_state=%d | username=%s\n",
++                              connection->id,cli->id,cli->s,cli->user_name);
++                     clean_client_media(cli);
++                  }
++
 +                  cli->s = PENDING_INVITE;
 +                  exit = 1;
 +               }
@@ -5197,6 +5246,14 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +                  send_remove_to_xcoder(connection); // Send remove to xcoder
 +                  decrement_counter(transcoder_calls, 1); //Decrements transcoder_calls counter
 +
++                  if (parse_sdp_res == 0 && msg->sdp)
++                  {
++                     LM_INFO("ACK with body and SDP. Re-write the SDP on b2bcallid=%d", connection->id);
++                     caller->s = TWO_OK;
++                     status = parse_sdp_b2b(msg, &body.s, connection, &(connection->clients[c]));
++                     caller->s = REINVITE;
++                  }
++
 +                  i = MAX_CONNECTIONS; // To leave the cicle
 +                  c = MAX_CLIENTS;
 +               }
@@ -5926,7 +5983,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b/xcoder_b2b.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.h	2014-02-28 11:30:36.269854673 +0000
++++ modules/xcoder_b2b/xcoder_b2b.h	2014-05-22 15:06:53.220777409 +0100
 @@ -0,0 +1,230 @@
 +/********************************************************************************
 + *
@@ -6160,7 +6217,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b
 +time_t * g_xcoder_down_timestamp;           // Timestamp when the xcoder was set to down state
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcoder_b2b/xcoder_b2b_load.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-02-28 11:30:36.269854673 +0000
++++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-05-22 15:06:53.216777633 +0100
 @@ -0,0 +1,69 @@
 +#ifndef _XCODER_LOAD_H_
 +#define _XCODER_LOAD_H_
@@ -6233,7 +6290,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcode
 +#endif
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcoder_b2b/xcoder_b2b_traps.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-02-28 11:30:36.281854714 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-05-22 15:06:53.224777910 +0100
 @@ -0,0 +1,128 @@
 +/*
 + * xcoder_b2b_traps.c
@@ -6365,7 +6422,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcod
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcoder_b2b/xcoder_b2b_traps.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-02-28 11:30:36.285854720 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-05-22 15:06:53.228787744 +0100
 @@ -0,0 +1,34 @@
 +/*
 + * xcoder_b2b_traps.h
@@ -6403,7 +6460,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcod
 +#endif /* XCODER_B2B_TRAPS_H_ */
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h modules/xcoder_b2b/xcoder_protocol.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_protocol.h	2014-02-28 11:30:36.277854669 +0000
++++ modules/xcoder_b2b/xcoder_protocol.h	2014-05-22 15:06:53.224777910 +0100
 @@ -0,0 +1,919 @@
 +/*! 
 + *  \file      xcoder_protocol.h
