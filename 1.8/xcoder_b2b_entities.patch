@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.c	2013-01-28 15:56:15.000000000 +0000
-+++ b2b_entities/dlg.c	2014-02-14 15:07:21.514354231 +0000
++++ b2b_entities/dlg.c	2014-10-29 13:37:52.180777376 +0000
 @@ -509,7 +509,6 @@
  	}
  	LM_DBG("start - method = %.*s\n", msg->first_line.u.request.method.len,
@@ -131,7 +131,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
 +            continue;
 +         }
 +
-+         snprintf(media_type,streams->media.len+1,streams->media.s);
++         snprintf(media_type,streams->media.len+1,"%s",streams->media.s);
 +         LM_INFO("Media type is %s\n",media_type);
 +         if(strcmp(media_type,"image")==0)
 +         {
@@ -217,7 +217,7 @@ diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.c b2b_entities/dlg.c
  						
 diff -Naur opensips-1.8.3-tls/modules/b2b_entities/dlg.h b2b_entities/dlg.h
 --- opensips-1.8.3-tls/modules/b2b_entities/dlg.h	2012-03-26 10:05:52.000000000 +0100
-+++ b2b_entities/dlg.h	2014-02-14 15:07:21.494354684 +0000
++++ b2b_entities/dlg.h	2014-10-29 13:37:52.160777305 +0000
 @@ -49,6 +49,7 @@
  
  

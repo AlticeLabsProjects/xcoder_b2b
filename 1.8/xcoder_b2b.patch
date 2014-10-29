@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Makefile
 --- opensips-1.8.3-tls/modules/xcoder_b2b/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/Makefile	2014-09-24 11:20:52.024777642 +0100
++++ modules/xcoder_b2b/Makefile	2014-10-29 13:37:56.288777463 +0000
 @@ -0,0 +1,16 @@
 +# Author : Jorge Pinho PT Inovacao
 +#
@@ -20,7 +20,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Mak
 +
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b/xcoder_b2b.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.c	2014-09-24 11:20:52.196777385 +0100
++++ modules/xcoder_b2b/xcoder_b2b.c	2014-10-29 13:37:56.312777554 +0000
 @@ -0,0 +1,5967 @@
 +#include <sys/stat.h>
 +#include "xcoder_b2b.h"
@@ -924,7 +924,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(att_copy)/sizeof(char);
 +   if( size >= (strlen(att)+2) )
 +   {
-+	   snprintf(att_copy,strlen(att)+1,att);
++	   snprintf(att_copy,strlen(att)+1,"%s",att);
 +	   remove_newline_str(att_copy);
 +	   LM_INFO("Supported attribute list : [%s]\n", att_copy);
 +   }
@@ -1244,7 +1244,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (strlen(response)) )
 +   {
-+	   snprintf(msg_copy,strlen(response)+1,response);
++	   snprintf(msg_copy,strlen(response)+1,"%s",response);
 +	   remove_newline_str(msg_copy);
 +   }
 +   else
@@ -1505,7 +1505,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +	   int size=sizeof(read_copy)/sizeof(char);
 +	   if( size >= (strlen(buffer)+1 ))
 +	   {
-+		   snprintf(read_copy,strlen(buffer)+1,buffer);
++		   snprintf(read_copy,strlen(buffer)+1,"%s",buffer);
 +		   remove_newline_str(read_copy);
 +		   LM_ERR("ERROR. Buffer was not empty. Message read : %s. Proceeding to send message.\n",read_copy);
 +	   }
@@ -1536,7 +1536,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(cmd_copy)/sizeof(char);
 +   if( size >= (strlen(to_send)+2) )
 +   {
-+	   snprintf(cmd_copy,strlen(to_send)+1,to_send);
++	   snprintf(cmd_copy,strlen(to_send)+1,"%s",to_send);
 +	   remove_newline_str(cmd_copy);
 +	   LM_NOTICE("Command to xcoder. body [%s] | fd [%d]\n",cmd_copy,socket->fd);
 +   }
@@ -1589,7 +1589,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size_copy= sizeof(recv_copy)/sizeof(char);
 +   if( size_copy >= (strlen(buffer)+2) )
 +   {
-+	   snprintf(recv_copy,strlen(buffer)+1,buffer);
++	   snprintf(recv_copy,strlen(buffer)+1,"%s",buffer);
 +	   remove_newline_str(recv_copy);
 +   }
 +   else
@@ -2155,10 +2155,10 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +                        }
 +                        else if(strlen(cli_dst->payload_str) == 0)
 +                        {
-+                            char payload_lst[128];
-+                            bzero(payload_lst, 128);
-+                            get_all_suported_payloads(payload_lst);
-+                            replace_b2b(msg, &(message[init_position]), len_to_end, payload_lst);
++                           char payload_lst[128];
++                           bzero(payload_lst, 128);
++                           get_all_suported_payloads(payload_lst);
++                           replace_b2b(msg, &(message[init_position]), len_to_end, payload_lst);
 +                        }
 +                        else
 +                           replace_b2b(msg, &(message[init_position]), len_to_end, cli_dst->payload_str);
@@ -2449,7 +2449,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +         return PARSER_ERROR;
 +      }
 +
-+      snprintf(media_type,streams->media.len+1,streams->media.s);
++      snprintf(media_type,streams->media.len+1,"%s",streams->media.s);
 +      if(strcmp(media_type,"audio")==0)
 +      {
 +         break;
@@ -2504,7 +2504,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +            attr=attr->next;
 +            continue;
 +         }
-+         snprintf(codec,attr->rtp_enc.len+1,attr->rtp_enc.s);
++         snprintf(codec,attr->rtp_enc.len+1,"%s",attr->rtp_enc.s);
 +         str_toUpper(codec); // Put codec in uppercase
 +
 +         for (k = 0; k < MAX_PAYLOADS; k++) // Loop to the sufmotion payload to try and match a client payload.
@@ -3220,7 +3220,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +	   LM_INFO("Received message : [%s]\n", msg_copy);
 +   }
@@ -3286,9 +3286,9 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   sprintf(src_ip, src_ipP);
 +   sprintf(cseq_copy, cseq_call); // This string will be copied because strtok_r can change this string.
 +   if(uri!=NULL)
-+	   snprintf(user_name,uri->user.len+1,uri->user.s);
++	   snprintf(user_name,uri->user.len+1,"%s",uri->user.s);
 +   if(user_agent!=NULL)
-+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
++	   snprintf(user_agent_str,user_agent->body.len+1,"%s",user_agent->body.s);
 +
 +   if (msg->via1 && msg->via1->branch->value.s && msg->via1->branch->value.len < 128)
 +      sprintf(via_branch, "%.*s", msg->via1->branch->value.len, msg->via1->branch->value.s);
@@ -3297,9 +3297,9 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   char * number;
 +   number = strtok_r(cseq_copy, " ", &method); // Divide a string into tokens.
 +
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); //Get callID
-+   snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
-+   snprintf(to_tag, pTo->tag_value.len + 1, pTo->tag_value.s);
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s); //Get callID
++   snprintf(from_tag, pfrom->tag_value.len + 1, "%s", pfrom->tag_value.s);
++   snprintf(to_tag, pTo->tag_value.len + 1, "%s", pTo->tag_value.s);
 +   sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 +
 +   LM_INFO("Incoming 183 message. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | cseq=%s | username=%s\n",
@@ -3521,7 +3521,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +	   LM_INFO("Message received: [%s]\n", msg_copy);
 +   }
@@ -3561,15 +3561,15 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   bzero(user_agent_str,128);
 +   bzero(via_branch,128);
 +   sprintf(src_ip, src_ipP);
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); //Get callID
-+   snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
-+   snprintf(to_tag, pTo->tag_value.len + 1, pTo->tag_value.s);
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s); //Get callID
++   snprintf(from_tag, pfrom->tag_value.len + 1, "%s", pfrom->tag_value.s);
++   snprintf(to_tag, pTo->tag_value.len + 1, "%s", pTo->tag_value.s);
 +   sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 +
 +   if(uri!=NULL)
-+	   snprintf(user_name,uri->user.len+1,uri->user.s);
++	   snprintf(user_name,uri->user.len+1,"%s",uri->user.s);
 +   if(user_agent!=NULL)
-+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
++	   snprintf(user_agent_str,user_agent->body.len+1,"%s",user_agent->body.s);
 +
 +   if (msg->via1 && msg->via1->branch->value.s && msg->via1->branch->value.len < 128)
 +      sprintf(via_branch, "%.*s", msg->via1->branch->value.len, msg->via1->branch->value.s);
@@ -3840,7 +3840,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +	   LM_INFO("Message : [%s]\n", msg_copy);
 +   }
@@ -3933,10 +3933,10 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   bzero(to_tag, 128);
 +   bzero(cseq_call, 64);
 +
-+   snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
-+   snprintf(to_tag, pTo->tag_value.len + 1, pTo->tag_value.s);
++   snprintf(from_tag, pfrom->tag_value.len + 1, "%s", pfrom->tag_value.s);
++   snprintf(to_tag, pTo->tag_value.len + 1, "%s", pTo->tag_value.s);
 +   if (has_body) snprintf(conn_ip, sessions->ip_addr.len + 1, sessions->ip_addr.s);
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s);
 +   sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 +
 +   LM_NOTICE("Check if is an in dialog invite. call_id=%s | src_ip=%s | from_tag=%s | to_tag=%s | user_name=%.*s\n",
@@ -4128,7 +4128,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +	   LM_INFO("Received message : [%s]\n", msg_copy);
 +   }
@@ -4192,18 +4192,18 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   bzero(req_uri_user,128);
 +   bzero(via_branch,128);
 +   sprintf(src_ip, src_ip_from_msg);
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s);
-+   snprintf(tag, pfrom->tag_value.len + 1, pfrom->tag_value.s);
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s);
++   snprintf(tag, pfrom->tag_value.len + 1, "%s", pfrom->tag_value.s);
 +   sprintf(cseq_call, "%.*s %.*s", cseq->number.len, cseq->number.s, cseq->method.len, cseq->method.s);
 +
 +   if(from_uri!=NULL)
-+	   snprintf(user_name,from_uri->user.len+1,from_uri->user.s);
++	   snprintf(user_name,from_uri->user.len+1,"%s",from_uri->user.s);
 +   if(user_agent!=NULL)
-+	   snprintf(user_agent_str,user_agent->body.len+1,user_agent->body.s);
++	   snprintf(user_agent_str,user_agent->body.len+1,"%s",user_agent->body.s);
 +   if(to_uri!=NULL)
 +   {
-+	   snprintf(dst_host,to_uri->host.len+1,to_uri->host.s);
-+	   snprintf(dst_user_name,to_uri->user.len+1,to_uri->user.s);
++	   snprintf(dst_host,to_uri->host.len+1,"%s",to_uri->host.s);
++	   snprintf(dst_user_name,to_uri->user.len+1,"%s",to_uri->user.s);
 +   }
 +
 +   // get optional fields
@@ -4251,7 +4251,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +		   return PARSER_ERROR;
 +	   }
 +
-+	   snprintf(media_type,streams->media.len+1,streams->media.s);
++	   snprintf(media_type,streams->media.len+1,"%s",streams->media.s);
 +	   LM_INFO("Media type is %s\n",media_type);
 +	   if(strcmp(media_type,"image")==0)
 +	   {
@@ -4411,7 +4411,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +   }
 +   else
@@ -4440,8 +4440,8 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   bzero(from_tag, 128);
 +   char callID[128];
 +   bzero(callID, 128);
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); //Get call-id
-+   snprintf(from_tag, pfrom->tag_value.len + 1, pfrom->tag_value.s); //Get from tag
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s); //Get call-id
++   snprintf(from_tag, pfrom->tag_value.len + 1, "%s", pfrom->tag_value.s); //Get from tag
 +
 +   LM_NOTICE("Received '%.*s %.*s' from ip %s | call_id=%s | tag=%s\n",
 +         msg->first_line.u.reply.status.len, msg->first_line.u.reply.status.s, msg->first_line.u.reply.reason.len, msg->first_line.u.reply.reason.s, src_ip,callID,from_tag);
@@ -4528,7 +4528,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   int size=sizeof(msg_copy)/sizeof(char);
 +   if( size >= (msg->len+2) )
 +   {
-+	   snprintf(msg_copy,msg->len+1,msg->buf);
++	   snprintf(msg_copy,msg->len+1,"%s",msg->buf);
 +	   remove_newline_str(msg_copy);
 +   }
 +   else
@@ -4552,7 +4552,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +   }
 +
 +   refer = msg->refer_to->parsed;
-+   snprintf(callID, (msg->callid->body.len + 1), msg->callid->body.s); // Get call-id
++   snprintf(callID, (msg->callid->body.len + 1), "%s", msg->callid->body.s); // Get call-id
 +
 +   LM_INFO("Refer %.*s\n", refer->body.len, refer->body.s);
 +
@@ -5991,7 +5991,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b/xcoder_b2b.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.h	2014-09-24 11:20:52.020777264 +0100
++++ modules/xcoder_b2b/xcoder_b2b.h	2014-10-29 13:37:56.284777446 +0000
 @@ -0,0 +1,230 @@
 +/********************************************************************************
 + *
@@ -6225,7 +6225,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b
 +time_t * g_xcoder_down_timestamp;           // Timestamp when the xcoder was set to down state
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcoder_b2b/xcoder_b2b_load.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-09-24 11:20:52.012777511 +0100
++++ modules/xcoder_b2b/xcoder_b2b_load.h	2014-10-29 13:37:56.284777446 +0000
 @@ -0,0 +1,69 @@
 +#ifndef _XCODER_LOAD_H_
 +#define _XCODER_LOAD_H_
@@ -6298,7 +6298,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcode
 +#endif
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcoder_b2b/xcoder_b2b_traps.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-09-24 11:20:52.175952360 +0100
++++ modules/xcoder_b2b/xcoder_b2b_traps.c	2014-10-29 13:37:56.296777617 +0000
 @@ -0,0 +1,128 @@
 +/*
 + * xcoder_b2b_traps.c
@@ -6430,7 +6430,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcod
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcoder_b2b/xcoder_b2b_traps.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-09-24 11:20:52.180777753 +0100
++++ modules/xcoder_b2b/xcoder_b2b_traps.h	2014-10-29 13:37:56.300777423 +0000
 @@ -0,0 +1,34 @@
 +/*
 + * xcoder_b2b_traps.h
@@ -6468,7 +6468,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcod
 +#endif /* XCODER_B2B_TRAPS_H_ */
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h modules/xcoder_b2b/xcoder_protocol.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_protocol.h	2014-09-24 11:20:52.032777414 +0100
++++ modules/xcoder_b2b/xcoder_protocol.h	2014-10-29 13:37:56.292779801 +0000
 @@ -0,0 +1,919 @@
 +/*! 
 + *  \file      xcoder_protocol.h
