@@ -1,6 +1,6 @@
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Makefile
 --- opensips-1.8.3-tls/modules/xcoder_b2b/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/Makefile	2016-01-13 15:17:00.185554767 +0000
++++ modules/xcoder_b2b/Makefile	2017-05-11 09:35:24.466493393 +0100
 @@ -0,0 +1,16 @@
 +# Author : Jorge Pinho PT Inovacao
 +#
@@ -20,8 +20,8 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/Makefile modules/xcoder_b2b/Mak
 +
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b/xcoder_b2b.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.c	2016-01-13 15:17:00.205554837 +0000
-@@ -0,0 +1,6023 @@
++++ modules/xcoder_b2b/xcoder_b2b.c	2017-05-11 09:35:25.102493506 +0100
+@@ -0,0 +1,6029 @@
 +#include <sys/stat.h>
 +#include "xcoder_b2b.h"
 +#include "xcoder_b2b_load.h"
@@ -3635,6 +3635,12 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +                    		 connections[i].id,connections[i].s,connections[i].call_id,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, cli_dst->id,cli_dst->s,cli_dst->user_name, cli_dst->src_ip, cli_dst->tag);
 +                     return TO_DROP;
 +                  }
++                  else if ((cli_dst->s == PENDING_200OK))
++                  {
++                     LM_INFO("Packet retransmission. b2bcallid=%d | conn_state=%d | call_id=%s | client_id=%d | client_state=%d | username=%s | src_ip=%s | tag=%s | dst_cli_id=%d | dst_cli_state=%d | dst_cli_username=%s | dst_client_ip=%s | dst_client_tag=%s\n",
++                    		 connections[i].id,connections[i].s,connections[i].call_id,cli->id,cli->s,cli->user_name, cli->src_ip, cli->tag, cli_dst->id,cli_dst->s,cli_dst->user_name, cli_dst->src_ip, cli_dst->tag);
++                     return TO_DROP;
++                  }
 +                  else if ((cli_dst->s == TO_HOLD || cli_dst->s == OFF_HOLD) && (strcmp(cli->tag, to_tag) == 0))
 +                  {
 +                	 LM_NOTICE("Parse in dialog 200OK. Putting call on/off hold. b2bcallid=%d | client_id=%d",connections[i].id, cli->id);
@@ -6047,7 +6053,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.c modules/xcoder_b2b
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b/xcoder_b2b.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b.h	2016-01-13 15:17:00.181554941 +0000
++++ modules/xcoder_b2b/xcoder_b2b.h	2017-05-11 09:35:24.342493190 +0100
 @@ -0,0 +1,231 @@
 +/********************************************************************************
 + *
@@ -6282,7 +6288,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b.h modules/xcoder_b2b
 +time_t * g_xcoder_down_timestamp;           // Timestamp when the xcoder was set to down state
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcoder_b2b/xcoder_b2b_load.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_load.h	2016-01-13 15:17:00.177554997 +0000
++++ modules/xcoder_b2b/xcoder_b2b_load.h	2017-05-11 09:35:24.222493535 +0100
 @@ -0,0 +1,69 @@
 +#ifndef _XCODER_LOAD_H_
 +#define _XCODER_LOAD_H_
@@ -6355,7 +6361,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_load.h modules/xcode
 +#endif
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcoder_b2b/xcoder_b2b_traps.c
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.c	2016-01-13 15:17:00.189554580 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.c	2017-05-11 09:35:24.626493256 +0100
 @@ -0,0 +1,128 @@
 +/*
 + * xcoder_b2b_traps.c
@@ -6487,7 +6493,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.c modules/xcod
 +}
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcoder_b2b/xcoder_b2b_traps.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_b2b_traps.h	2016-01-13 15:17:00.193555647 +0000
++++ modules/xcoder_b2b/xcoder_b2b_traps.h	2017-05-11 09:35:24.654493159 +0100
 @@ -0,0 +1,34 @@
 +/*
 + * xcoder_b2b_traps.h
@@ -6525,7 +6531,7 @@ diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_b2b_traps.h modules/xcod
 +#endif /* XCODER_B2B_TRAPS_H_ */
 diff -Naur opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h modules/xcoder_b2b/xcoder_protocol.h
 --- opensips-1.8.3-tls/modules/xcoder_b2b/xcoder_protocol.h	1970-01-01 01:00:00.000000000 +0100
-+++ modules/xcoder_b2b/xcoder_protocol.h	2016-01-13 15:17:00.185554767 +0000
++++ modules/xcoder_b2b/xcoder_protocol.h	2017-05-11 09:35:24.594493175 +0100
 @@ -0,0 +1,919 @@
 +/*! 
 + *  \file      xcoder_protocol.h
